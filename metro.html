@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Namma Metro, Layered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Kannada:wdth,wght@75..125,300..800&family=Martian+Mono:wght@300..600&display=swap">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="metro.css">
+<style>
+/* Layout: a night-time cutaway of the city slab. Viaducts ride above it, tunnels glow through it.
+   Colour tokens below are the Night scene; the Customise panel can switch scenes. */
+:root { --bg: #0A0F24; --ink: #EEF0FF; --muted: #98A1C8; --rule: #273056; --panel: #111833; --accent: #E2B022; color-scheme: dark; }
+</style>
+<script src="viz-only.js" defer></script>
+</head>
+<body>
+<nav class="series" aria-label="Isometric Bengaluru">
+  <a class="home" href="index.html">ಬೆಂಗಳೂರು <span>Isometric</span></a>
+  <a href="landcover.html">Concrete Tide</a>
+  <a href="metro.html" aria-current="page">Namma Metro</a>
+  <a href="monsoon.html">Monsoon Almanac</a>
+  <a href="people.html">Lakhs of People</a>
+  <a href="delhi-metro.html">Delhi Metro</a>
+</nav>
+<main class="app" id="app"></main>
+<div class="tip" id="tip" role="status"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+} }
+</script>
+<script type="module">
+import { mountMetro } from './metro-engine.js';
+
+// [name, lat, lon, opened (decimal year), depth]  depth: 'e' elevated, 'u' underground. lat=null → interpolated
+const LINES = [
+ { id: 'purple', name: 'Purple Line', hex: '#9B4DE0', km: 43.49, status: 'open', from: 'Whitefield (Kadugodi)', to: 'Challaghatta', st: [
+  ['Whitefield (Kadugodi)', 12.9957, 77.7577, 2023.23, 'e'], ['Hopefarm Channasandra', null, null, 2023.23, 'e'], ['Kadugodi Tree Park', null, null, 2023.23, 'e'],
+  ['Pattandur Agrahara', 12.9877, 77.7385, 2023.23, 'e'], ['Sri Sathya Sai Hospital', null, null, 2023.23, 'e'], ['Nallurhalli', null, null, 2023.23, 'e'],
+  ['Kundalahalli', 12.9770, 77.7160, 2023.23, 'e'], ['Seetharampalya', null, null, 2023.23, 'e'], ['Hoodi', 12.9887, 77.7030, 2023.23, 'e'],
+  ['Garudacharapalya', null, null, 2023.23, 'e'], ['Singayyanapalya', null, null, 2023.23, 'e'], ['Krishnarajapura (KR Puram)', 13.0003, 77.6780, 2023.23, 'e'],
+  ['Benniganahalli', 12.9910, 77.6630, 2023.77, 'e'], ['Baiyappanahalli', 12.9907, 77.6525, 2011.80, 'e'], ['Swami Vivekananda Road', 12.9859, 77.6449, 2011.80, 'e'],
+  ['Indiranagar', 12.9783, 77.6387, 2011.80, 'e'], ['Halasuru', 12.9760, 77.6268, 2011.80, 'e'], ['Trinity', 12.9730, 77.6170, 2011.80, 'e'],
+  ['Mahatma Gandhi Road', 12.9755, 77.6066, 2011.80, 'e'], ['Cubbon Park', 12.9810, 77.5975, 2016.33, 'u'], ['Dr. B.R. Ambedkar Station, Vidhana Soudha', 12.9798, 77.5909, 2016.33, 'u'],
+  ['Sir M. Visvesvaraya Station, Central College', 12.9740, 77.5840, 2016.33, 'u'], ['Nadaprabhu Kempegowda Station, Majestic', 12.9757, 77.5728, 2016.33, 'u'], ['Krantivira Sangolli Rayanna Railway Station', 12.9758, 77.5660, 2016.33, 'u'],
+  ['Magadi Road', 12.9756, 77.5555, 2015.87, 'e'], ['Hosahalli', 12.9742, 77.5455, 2015.87, 'e'], ['Vijayanagar', 12.9709, 77.5373, 2015.87, 'e'],
+  ['Attiguppe', 12.9619, 77.5335, 2015.87, 'e'], ['Deepanjali Nagar', 12.9519, 77.5373, 2015.87, 'e'], ['Mysore Road', 12.9466, 77.5301, 2015.87, 'e'],
+  ['Pantharapalya–Nayandahalli', 12.9420, 77.5210, 2021.66, 'e'], ['Rajarajeshwari Nagar', 12.9366, 77.5190, 2021.66, 'e'], ['Jnanabharathi', 12.9350, 77.5120, 2021.66, 'e'],
+  ['Pattanagere', 12.9240, 77.4990, 2021.66, 'e'], ['Kengeri Bus Terminal', 12.9150, 77.4870, 2021.66, 'e'], ['Kengeri', 12.9080, 77.4830, 2021.66, 'e'],
+  ['Challaghatta', 12.8977, 77.4614, 2023.77, 'e'] ] },
+ { id: 'green', name: 'Green Line', hex: '#138A4A', km: 33.46, status: 'open', from: 'Madavara', to: 'Silk Institute', st: [
+  ['Madavara', 13.0575, 77.4726, 2024.85, 'e'], ['Chikkabidarakallu', 13.0527, 77.4880, 2024.85, 'e'], ['Manjunathanagar', 13.0500, 77.4950, 2024.85, 'e'],
+  ['Nagasandra', 13.0480, 77.5000, 2015.33, 'e'], ['Dasarahalli', 13.0435, 77.5125, 2015.33, 'e'], ['Jalahalli', 13.0395, 77.5195, 2015.33, 'e'],
+  ['Peenya Industry', 13.0360, 77.5255, 2014.16, 'e'], ['Peenya', 13.0330, 77.5330, 2014.16, 'e'], ['Goraguntepalya', 13.0283, 77.5409, 2014.16, 'e'],
+  ['Yeshwanthpur', 13.0230, 77.5500, 2014.16, 'e'], ['Sandal Soap Factory', 13.0145, 77.5540, 2014.16, 'e'], ['Mahalakshmi', 13.0080, 77.5490, 2014.16, 'e'],
+  ['Rajajinagar', 13.0000, 77.5497, 2014.16, 'e'], ['Mahakavi Kuvempu Road', 12.9983, 77.5570, 2014.16, 'e'], ['Srirampura', 12.9965, 77.5635, 2014.16, 'e'],
+  ['Mantri Square Sampige Road', 12.9906, 77.5706, 2014.16, 'e'], ['Nadaprabhu Kempegowda Station, Majestic', 12.9757, 77.5728, 2017.46, 'u'], ['Chickpete', 12.9668, 77.5747, 2017.46, 'u'],
+  ['Krishna Rajendra Market', 12.9610, 77.5740, 2017.46, 'u'], ['National College', 12.9505, 77.5735, 2017.46, 'e'], ['Lalbagh', 12.9466, 77.5800, 2017.46, 'e'],
+  ['South End Circle', 12.9380, 77.5800, 2017.46, 'e'], ['Jayanagar', 12.9295, 77.5800, 2017.46, 'e'], ['Rashtreeya Vidyalaya Road', 12.9215, 77.5800, 2017.46, 'e'],
+  ['Banashankari', 12.9150, 77.5735, 2017.46, 'e'], ['Jaya Prakash Nagar', 12.9070, 77.5730, 2017.46, 'e'], ['Yelachenahalli', 12.8960, 77.5700, 2017.46, 'e'],
+  ['Konanakunte Cross', 12.8880, 77.5620, 2021.04, 'e'], ['Doddakallasandra', 12.8850, 77.5530, 2021.04, 'e'], ['Vajarahalli', 12.8775, 77.5440, 2021.04, 'e'],
+  ['Thalaghattapura', 12.8710, 77.5380, 2021.04, 'e'], ['Silk Institute', 12.8617, 77.5300, 2021.04, 'e'] ] },
+ { id: 'yellow', name: 'Yellow Line', hex: '#E2B022', km: 19.15, status: 'open', from: 'RV Road', to: 'Bommasandra', st: [
+  ['Rashtreeya Vidyalaya Road', 12.9215, 77.5800, 2025.61, 'e'], ['Ragigudda', 12.9170, 77.5890, 2025.61, 'e'], ['Jayadeva Hospital', 12.9180, 77.5990, 2025.61, 'e'],
+  ['BTM Layout', 12.9165, 77.6100, 2025.61, 'e'], ['Central Silk Board', 12.9175, 77.6230, 2025.61, 'e'], ['Bommanahalli', 12.9010, 77.6330, 2025.61, 'e'],
+  ['Hongasandra', 12.8960, 77.6380, 2025.61, 'e'], ['Kudlu Gate', 12.8930, 77.6420, 2025.61, 'e'], ['Singasandra', 12.8850, 77.6480, 2025.61, 'e'],
+  ['Hosa Road', 12.8760, 77.6540, 2025.61, 'e'], ['Beratena Agrahara', 12.8660, 77.6590, 2025.61, 'e'], ['Electronic City', 12.8450, 77.6600, 2025.61, 'e'],
+  ['Infosys Foundation Konappana Agrahara', 12.8400, 77.6680, 2025.61, 'e'], ['Huskur Road', 12.8330, 77.6760, 2025.61, 'e'], ['Biocon Hebbagodi', 12.8240, 77.6820, 2025.61, 'e'],
+  ['Delta Electronics Bommasandra', 12.8150, 77.6880, 2025.61, 'e'] ] },
+ { id: 'pink', name: 'Pink Line', hex: '#F0679E', km: 21.25, status: 'building', expectYear: 'Oct 2026', from: 'Kalena Agrahara', to: 'Nagawara', expect: 'elevated section expected from mid-October 2026, underground section by March 2027', st: [
+  ['Kalena Agrahara', 12.8660, 77.5960, 2026.8, 'e'], ['Hulimavu', 12.8780, 77.5990, 2026.8, 'e'], ['IIM Bangalore', 12.8950, 77.6010, 2026.8, 'e'],
+  ['JP Nagar 4th Phase', 12.9060, 77.5990, 2026.8, 'e'], ['Jayadeva Hospital', 12.9180, 77.5990, 2026.8, 'e'], ['Tavarekere', 12.9270, 77.6030, 2026.8, 'e'],
+  ['Dairy Circle', 12.9380, 77.6000, 2027.2, 'u'], ['Lakkasandra', 12.9470, 77.6000, 2027.2, 'u'], ['Langford Town', 12.9580, 77.6010, 2027.2, 'u'],
+  ['Rashtriya Military School', 12.9670, 77.6040, 2027.2, 'u'], ['Mahatma Gandhi Road', 12.9755, 77.6066, 2027.2, 'u'], ['Shivajinagar', 12.9860, 77.6050, 2027.2, 'u'],
+  ['Cantonment', 12.9940, 77.5980, 2027.2, 'u'], ['Pottery Town', 13.0010, 77.6090, 2027.2, 'u'], ['Tannery Road', 13.0100, 77.6150, 2027.2, 'u'],
+  ['Venkateshpura', 13.0200, 77.6180, 2027.2, 'u'], ['Kadugundanahalli', 13.0310, 77.6220, 2027.2, 'u'], ['Nagawara', 13.0440, 77.6250, 2027.2, 'u'] ] },
+ { id: 'blue', name: 'Blue Line', hex: '#2A9BE0', km: 58.19, status: 'building', expectYear: 'Dec 2026', from: 'Central Silk Board', to: 'KIA Terminals', expect: 'Silk Board–KR Puram expected from December 2026, airport section by March 2028', st: [
+  ['Central Silk Board', 12.9175, 77.6230, 2026.95, 'e'], ['HSR Layout', 12.9200, 77.6380, 2026.95, 'e'], ['Agara', 12.9230, 77.6480, 2026.95, 'e'],
+  ['Ibbalur', 12.9250, 77.6590, 2026.95, 'e'], ['Bellandur', 12.9290, 77.6770, 2026.95, 'e'], ['Kadubeesanahalli', 12.9370, 77.6940, 2026.95, 'e'],
+  ['Kodibeesanahalli', 12.9450, 77.6975, 2026.95, 'e'], ['Marathahalli', 12.9560, 77.7010, 2026.95, 'e'], ['ISRO', 12.9650, 77.6990, 2026.95, 'e'],
+  ['Doddanekundi', 12.9750, 77.6960, 2026.95, 'e'], ['DRDO Sports Complex', 12.9850, 77.6930, 2026.95, 'e'], ['Saraswathi Nagar', 12.9930, 77.6880, 2026.95, 'e'],
+  ['Krishnarajapura (KR Puram)', 13.0003, 77.6780, 2026.95, 'e'], ['Kasturi Nagar', 13.0040, 77.6600, 2028.2, 'e'], ['Horamavu', 13.0150, 77.6530, 2028.2, 'e'],
+  ['HRBR Layout', 13.0210, 77.6450, 2028.2, 'e'], ['Kalyan Nagar', 13.0240, 77.6400, 2028.2, 'e'], ['HBR Layout', 13.0350, 77.6320, 2028.2, 'e'],
+  ['Nagawara', 13.0440, 77.6250, 2028.2, 'e'], ['Veerannapalya', 13.0430, 77.6120, 2028.2, 'e'], ['Kempapura', 13.0410, 77.6030, 2028.2, 'e'],
+  ['Hebbal', 13.0360, 77.5970, 2028.2, 'e'], ['Kodigehalli', 13.0560, 77.5980, 2028.2, 'e'], ['Jakkur Cross', 13.0700, 77.6000, 2028.2, 'e'],
+  ['Yelahanka', 13.1000, 77.6000, 2028.2, 'e'], ['Bagalur Cross', 13.1250, 77.6200, 2028.2, 'e'], ['Bettahalasuru', 13.1450, 77.6400, 2028.2, 'e'],
+  ['Doddajala', 13.1650, 77.6600, 2028.2, 'e'], ['Airport City', 13.1850, 77.6850, 2028.2, 'e'], ['KIA Terminals', 13.1990, 77.7070, 2028.2, 'e'] ] },
+];
+
+const RIDES = [
+  { fy: '2011–12', x: 2011.5, total: 4166000, days: 163, note: 'Partial year, from 20 Oct' },
+  { fy: '2016–17', x: 2016.5, total: 54225130, days: 365 },
+  { fy: '2019–20', x: 2019.5, total: 174219000, days: 366 },
+  { fy: '2023–24', x: 2023.5, total: 232776000, days: 366 },
+  { fy: '2024–25', x: 2024.5, total: 276670000, days: 365 },
+].map(r => ({ ...r, avg: Math.round(r.total / r.days) }));
+const inr = (n) => Math.round(n).toLocaleString('en-IN');
+const lakh = (n) => (n / 1e5).toFixed(2).replace(/\.?0+$/, '') + ' lakh';
+
+mountMetro({
+  key: 'blr',
+  native: 'ನಮ್ಮ ಮೆಟ್ರೋ', nativeLang: 'kn', eyebrow: 'Network · 2011 to today',
+  title: 'Namma Metro, Layered',
+  dek: 'Fifteen years of openings, from a <b>6.7 km</b> stub on MG Road to <b>96 km</b> and <b>83 stations</b>. Viaducts sit above the slab, tunnels glow through it, and the lines still under construction are dashed.',
+  origin: { lat: 12.97, lon: 77.60 }, center: { lat: 12.985, lon: 77.61 },
+  accent: '#E2B022', accentOnLight: '#9A6B00',
+  depth: { purple: [1.1, -1.1], green: [1.1, -1.7], yellow: [1.75, -1.2], pink: [1.35, -1.4], blue: [1.35, -1.2] },
+  lines: LINES,
+  shortNames: { 'Whitefield (Kadugodi)': 'Whitefield', 'Rashtreeya Vidyalaya Road': 'RV Road', 'Delta Electronics Bommasandra': 'Bommasandra', 'Nadaprabhu Kempegowda Station, Majestic': 'Majestic', 'Mahatma Gandhi Road': 'MG Road', 'Krishnarajapura (KR Puram)': 'KR Puram' },
+  labels: [
+    { text: 'Majestic', lat: 12.9757, lon: 77.5728, name: 'Nadaprabhu Kempegowda Station, Majestic' },
+    { text: 'MG Road', lat: 12.9755, lon: 77.6066, name: 'Mahatma Gandhi Road' },
+  ],
+  lakes: [['Bellandur Lake', 12.935, 77.67, 1.9], ['Hebbal Lake', 13.045, 77.59, 0.9], ['Ulsoor Lake', 12.983, 77.62, 0.6], ['Varthur Lake', 12.943, 77.74, 1.3], ['Madiwala Lake', 12.908, 77.615, 0.9], ['Sankey Tank', 13.0093, 77.5747, 0.45], ['Yelahanka Lake', 13.10, 77.58, 0.9]],
+  kmLabel: 'km open',
+  timeline: {
+    start: 2011.6, now: 2026.76, nowLabel: 'Oct 2026', playSeconds: 12,
+    before: 'Before October 2011, Bengaluru had no metro.',
+    milestones: [
+      [2011.80, 'Oct 2011', 'Purple Line opens Baiyappanahalli–MG Road, the first 6.7 km.'],
+      [2014.16, 'Mar 2014', 'Green Line opens Sampige Road–Peenya Industry.'],
+      [2015.33, 'May 2015', 'Green Line reaches Nagasandra.'],
+      [2015.87, 'Nov 2015', 'Purple Line opens Mysore Road–Magadi Road.'],
+      [2016.33, 'Apr 2016', 'Purple goes underground beneath Vidhana Soudha to Majestic.'],
+      [2017.46, 'Jun 2017', 'Green tunnels under Majestic to Yelachenahalli. Phase 1 is complete.'],
+      [2021.04, 'Jan 2021', 'Green extends south to Silk Institute.'],
+      [2021.66, 'Aug 2021', 'Purple extends west to Kengeri.'],
+      [2023.23, 'Mar 2023', 'Purple opens Whitefield–KR Puram as a separate stretch.'],
+      [2023.77, 'Oct 2023', 'Purple joins up through Benniganahalli and reaches Challaghatta.'],
+      [2024.85, 'Nov 2024', 'Green reaches Madavara.'],
+      [2025.61, 'Aug 2025', 'Yellow Line opens to Electronic City and Bommasandra. Pink and Blue lines are under construction.'],
+    ],
+  },
+  inset: {
+    title: 'Average riders per day · financial year ending',
+    xMin: 2011, xMax: 2025.4, yMax: 1100000, yTicks: [0, 500000, 1000000], tickFmt: v => v ? v / 1e5 + 'L' : '0',
+    ref: { v: 1048031, label: 'Record day 10.48 lakh, 11 Aug 2025' },
+    bars: RIDES.map((r, i) => ({ x: r.x, v: r.avg, faded: r.days < 300, label: '’' + r.fy.slice(-2), labelRow: i === RIDES.length - 1 ? 1 : 0,
+      tip: `<div class="t-head">FY ${r.fy}</div><div class="t-row"><span>Avg per day</span><span>${inr(r.avg)}</span></div><div class="t-row"><span>Year total</span><span>${inr(r.total)}</span></div>${r.note ? `<div class="t-note">${r.note}</div>` : ''}` })),
+    valueLabel: { index: RIDES.length - 1, text: lakh(RIDES[RIDES.length - 1].avg) },
+  },
+  tables: [
+    { title: 'Lines', head: ['Line', 'Termini', 'km', 'Stations', 'Status'], rows: LINES.map(L => [`<i class="sw" style="background:${L.hex}"></i>${L.name}`, `${L.from} – ${L.to}`, L.km, L.id === 'blue' ? 29 : L.st.length, L.status === 'open' ? 'Open' : 'Building: ' + L.expect]) },
+    { title: 'Ridership', head: ['Financial year', 'Passengers', 'Avg per day'], rows: [...RIDES.map(r => [r.fy + (r.note ? ' (partial)' : ''), inr(r.total), inr(r.avg)]), ['April 2026 (month)', '–', inr(916461)], ['Record day, 11 Aug 2025', '–', inr(1048031)]] },
+  ],
+  source: 'Line lengths, station counts, opening dates, expected dates and annual ridership: <a href="https://en.wikipedia.org/wiki/Namma_Metro" target="_blank" rel="noopener">Namma Metro, Wikipedia</a> (BMRCL figures). Daily averages are annual totals divided by days in the year; FY 2011–12 covers only 20 Oct–31 Mar. Station positions are approximate and some are interpolated. Kilometres open for past years are scaled from the map.',
+});
+</script>
+</body>
+</html>

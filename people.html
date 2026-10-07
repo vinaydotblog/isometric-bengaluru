@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lakhs of People</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Kannada:wdth,wght@75..125,300..800&family=Martian+Mono:wght@300..600&display=swap">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Layout: tabebuia-season pink. Text column left; right, a skyline of census towers rising toward the back,
+   one cube per lakh of people, each cube coloured by the decade that added it, so the strata read across towers. */
+:root {
+  --bg: #FBEEF3;        /* pink trumpet-tree petals on the pavement */
+  --ink: #2A1330;
+  --muted: #76566F;
+  --rule: #EDD3DE;
+  --panel: #FFF8FB;
+  --accent: #AF3A90;
+  color-scheme: light;
+}
+body { background: linear-gradient(160deg, #FFF6FA 0%, var(--bg) 45%, #F6E0EA 100%); background-color: var(--bg); }
+.wrap { display: grid; grid-template-columns: minmax(280px, 370px) minmax(0, 1fr); grid-template-areas: "head fig" "rest fig"; gap: 20px 36px; padding: 18px var(--gutter) 28px; max-width: 1440px; margin-inline: auto; align-content: start; }
+.head { grid-area: head; padding-top: 10px; }
+.rest { grid-area: rest; display: grid; gap: 20px; align-content: start; }
+.figure { grid-area: fig; position: relative; min-width: 0; }
+#cv { display: block; width: 100%; height: min(78vh, 760px); min-height: 420px; }
+.bands { display: grid; gap: 4px; }
+.bands h2, .how h2 { font-family: var(--mono); font-weight: 500; font-size: 0.62rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.band { width: calc(100% + 12px); display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 3px 6px; margin-inline: -6px; border-radius: 4px; background: none; border: 0; text-align: left; cursor: pointer; font-size: 0.82rem; }
+.band:hover, .band[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.band .sw { width: 12px; height: 12px; margin: 0; }
+.band .n { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.how { font-size: 0.8rem; color: var(--muted); display: grid; gap: 6px; }
+.how p { margin: 0; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: 1fr; grid-template-areas: "head" "fig" "rest"; }
+  #cv { height: 70vh; min-height: 380px; }
+}
+</style>
+<script src="viz-only.js" defer></script>
+</head>
+<body>
+<nav class="series" aria-label="Isometric Bengaluru">
+  <a class="home" href="index.html">ಬೆಂಗಳೂರು <span>Isometric</span></a>
+  <a href="landcover.html">Concrete Tide</a>
+  <a href="metro.html">Namma Metro</a>
+  <a href="monsoon.html">Monsoon Almanac</a>
+  <a href="people.html" aria-current="page">Lakhs of People</a>
+  <a href="delhi-metro.html">Delhi Metro</a>
+</nav>
+<main class="wrap">
+  <header class="head">
+    <p class="eyebrow"><span class="kn">ಜನಸಂಖ್ಯೆ</span>Census · 1941–2011</p>
+    <h1 class="title">Lakhs of People</h1>
+    <p class="dek">Every cube is one lakh (1,00,000) people. Bengaluru went from <b>4 lakh</b> in 1941 to <b>84 lakh</b> in 2011, about twenty-one times over. Cubes keep the colour of the decade that added them, so each tower shows its own history.</p>
+  </header>
+  <section class="figure">
+    <canvas id="cv" role="img" aria-label="Isometric towers of Bengaluru's population by census year, one cube per lakh people"></canvas>
+  </section>
+  <section class="rest">
+    <div class="bands">
+      <h2>Added in the decade · hover to trace a layer</h2>
+      <div id="bands"></div>
+    </div>
+    <div class="how">
+      <p>The 2001–2011 layer includes people counted inside the city after the 2007 merger that formed the BBMP, which absorbed 7 city councils, 1 town council and 110 villages.</p>
+    </div>
+    <div class="actions"><button class="btn" id="dataBtn">Data table</button></div>
+    <p class="source">Source: Census of India, via the population table on <a href="https://en.wikipedia.org/wiki/Bangalore#Demographics" target="_blank" rel="noopener">Wikipedia</a>. City boundaries changed between censuses.</p>
+  </section>
+  <div class="sheet" id="sheet" hidden>
+    <button class="btn close" id="closeSheet">Close</button>
+    <h2>Population by census</h2>
+    <div class="table-wrap"><table id="tbl"></table></div>
+  </div>
+</main>
+<div class="tip" id="tip" role="status"></div>
+<script>
+const POP = [[1941, 406760], [1951, 778977], [1961, 1207000], [1971, 1654000], [1981, 2922000], [1991, 4130000], [2001, 5101000], [2011, 8425970]]
+  .map(([y, p], i, a) => ({ i, y, p, add: i ? p - a[i - 1][1] : p, g: i ? (p / a[i - 1][1] - 1) * 100 : null }));
+const RAMP = ['#E97FB5', '#DA64A7', '#C74C9B', '#AF3A90', '#932D84', '#762276', '#581A64', '#3B124E'];
+const BAND_LABEL = (i) => i === 0 ? 'By 1941' : `${POP[i - 1].y}–${String(POP[i].y).slice(2)}`;
+const inr = (n) => Math.round(n).toLocaleString('en-IN');
+const lakh = (n) => (n / 1e5).toFixed(1);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- cubes ---------- */
+const FOOT = 3, GAP = 1.15, SPAN = FOOT + GAP;
+// towers march toward the back-right: each census sits further along −y
+const TOWERS = POP.map(d => {
+  const n = d.p / 1e5, cubes = [];
+  for (let k = 0; k < Math.ceil(n - 1e-9); k++) {
+    const layer = Math.floor(k / (FOOT * FOOT)), slot = k % (FOOT * FOOT);
+    // fill each layer back-to-front so partial layers read as a growing count
+    const order = [[0, 0], [1, 0], [0, 1], [2, 0], [1, 1], [0, 2], [2, 1], [1, 2], [2, 2]][slot];
+    const lo = k * 1e5, band = POP.findIndex(q => q.p > lo + 1);
+    cubes.push({ cx: order[0], cy: order[1], cz: layer, f: Math.min(1, n - k), band, k });
+  }
+  return { d, x0: 0, y0: -d.i * SPAN, cubes };
+});
+const TOTAL_CUBES = TOWERS.reduce((a, t) => a + t.cubes.length, 0);
+
+/* ---------- projection + fit ---------- */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const C = Math.cos(Math.PI / 6), S = 0.5;
+let U = 20, OX = 0, OY = 0, W = 0, H = 0;
+const P = (x, y, z) => [OX + (x - y) * C * U, OY + ((x + y) * S - z) * U];
+function fit() {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+  W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // extremes in unit space
+  const pts = [];
+  TOWERS.forEach(t => { const top = Math.ceil(t.d.p / 1e5 / 9) + 1.4; [[0, t.y0, 0], [FOOT, t.y0, 0], [0, t.y0 + FOOT, 0], [FOOT, t.y0 + FOOT, 0], [0, t.y0, top], [FOOT, t.y0, top]].forEach(p => pts.push(p)); });
+  pts.push([-1, 2 + FOOT + 1.2, -1.4], [FOOT + 1.5, -7 * SPAN - 1, -1.4], [FOOT + 1.5, FOOT + 3.2, -1.4]);
+  const xs = pts.map(p => (p[0] - p[1]) * C), ys = pts.map(p => (p[0] + p[1]) * S - p[2]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const pad = 40;
+  U = Math.min((W - pad * 2) / (maxX - minX), (H - pad * 2) / (maxY - minY));
+  OX = pad - minX * U + ((W - pad * 2) - (maxX - minX) * U) / 2; OY = pad - minY * U + ((H - pad * 2) - (maxY - minY) * U) / 2;
+}
+
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = (v) => Math.round(f > 1 ? v + (255 - v) * (f - 1) : v * f); return `rgb(${m(r)},${m(g)},${m(b)})`; }
+function quad(pts, fill) { ctx.beginPath(); pts.forEach((p, i) => { const [a, b] = P(...p); i ? ctx.lineTo(a, b) : ctx.moveTo(a, b); }); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); }
+function cube(x, y, z, s, h, hex, alpha) {
+  const x1 = x + s, y1 = y + s, z1 = z + h;
+  ctx.globalAlpha = alpha;
+  quad([[x, y1, z], [x1, y1, z], [x1, y1, z1], [x, y1, z1]], shade(hex, 0.86));   // +y face
+  quad([[x1, y, z], [x1, y1, z], [x1, y1, z1], [x1, y, z1]], shade(hex, 0.64));   // +x face
+  quad([[x, y, z1], [x1, y, z1], [x1, y1, z1], [x, y1, z1]], shade(hex, 1.22));   // top
+  ctx.globalAlpha = 1;
+}
+function text(str, x, y, z, { size = 11, color = '#2A1330', weight = 500, align = 'center', font = 'Martian Mono' } = {}) {
+  const [a, b] = P(x, y, z); ctx.font = `${weight} ${size}px "${font}", ui-monospace, monospace`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(str, a, b);
+}
+
+let focus = -1, progress = reduce ? 1 : 0;
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // plinth running under the whole skyline
+  const px0 = -1, px1 = FOOT + 1.4, py0 = -7 * SPAN - 1.2, py1 = FOOT + 3.2, pz = -1.1;
+  quad([[px0, py1, pz], [px1, py1, pz], [px1, py1, 0], [px0, py1, 0]], '#E4BDD0');
+  quad([[px1, py0, pz], [px1, py1, pz], [px1, py1, 0], [px1, py0, 0]], '#CFA1B9');
+  quad([[px0, py0, 0], [px1, py0, 0], [px1, py1, 0], [px0, py1, 0]], '#F6DCE7');
+  // a gold kerb line along the front edge
+  quad([[px1, py0, -0.3], [px1, py1, -0.3], [px1, py1, -0.2], [px1, py0, -0.2]], '#C9962E');
+  // towers back (latest) to front (earliest)
+  const shown = Math.floor(progress * TOTAL_CUBES + 1e-6);
+  let seen = 0;
+  const all = [];
+  TOWERS.forEach(t => t.cubes.forEach(c => all.push({ t, c })));
+  // reveal in band order, so each decade's layer lands at once across every tower
+  const revealRank = new Map(); all.slice().sort((a, b) => a.c.band - b.c.band || a.c.k - b.c.k || a.t.d.i - b.t.d.i).forEach((o, r) => revealRank.set(o, r));
+  for (let ti = TOWERS.length - 1; ti >= 0; ti--) {
+    const t = TOWERS[ti];
+    const cubes = t.cubes.slice().sort((a, b) => a.cz - b.cz || (a.cx + a.cy) - (b.cx + b.cy));
+    for (const c of cubes) {
+      const o = all.find(q => q.c === c);
+      if (revealRank.get(o) >= shown) continue;
+      const alpha = focus < 0 || c.band === focus ? 1 : 0.22;
+      const g = 0.06;
+      cube(t.x0 + c.cx + g, t.y0 + c.cy + g, c.cz + g * 0.5, 1 - g * 2, (c.f) * (1 - g), RAMP[c.band], alpha);
+    }
+    // year on the plinth, in front of each tower; population label floating above
+    const fs = Math.max(8, Math.min(12, U * 0.5));
+    text(String(t.d.y), t.x0 + FOOT + 0.7, t.y0 + FOOT * 0.5, 0, { size: fs + 1, weight: 600, align: 'left' });
+    if (progress > 0.98) {
+      const top = Math.ceil(t.d.p / 1e5 / 9) + 0.45;
+      text(lakh(t.d.p) + (U > 16 ? ' L' : ''), t.x0, t.y0, top, { size: fs, weight: 500, color: focus < 0 || focus === t.d.i ? '#2A1330' : '#76566F' });
+    }
+  }
+}
+function animate() {
+  if (reduce) { progress = 1; draw(); return; }
+  const t0 = performance.now(), dur = 2600;
+  const step = (t) => { progress = Math.min(1, (t - t0) / dur); progress = 1 - Math.pow(1 - progress, 2); draw(); if (progress < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+new ResizeObserver(() => { fit(); draw(); }).observe(cv);
+fit();
+(document.fonts?.ready || Promise.resolve()).then(() => { fit(); animate(); });
+draw();
+
+/* ---------- legend (bands) ---------- */
+const bandsEl = document.getElementById('bands');
+bandsEl.innerHTML = POP.map(d => `<button class="band" data-i="${d.i}" aria-pressed="false"><span class="sw" style="background:${RAMP[d.i]}"></span><span>${BAND_LABEL(d.i)}</span><span class="n">+${lakh(d.add)} lakh</span></button>`).join('');
+function setFocus(i) { focus = i; bandsEl.querySelectorAll('.band').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === i))); draw(); }
+bandsEl.addEventListener('pointerover', (e) => { const b = e.target.closest('.band'); if (b) setFocus(+b.dataset.i); });
+bandsEl.addEventListener('pointerleave', () => setFocus(-1));
+bandsEl.addEventListener('focusin', (e) => { const b = e.target.closest('.band'); if (b) setFocus(+b.dataset.i); });
+bandsEl.addEventListener('focusout', () => setFocus(-1));
+
+/* ---------- hover on towers ---------- */
+const tip = document.getElementById('tip');
+function showTip(html, x, y) { tip.innerHTML = html; const w = tip.offsetWidth, h = tip.offsetHeight; tip.style.transform = `translate(${Math.min(innerWidth - w - 8, x + 16)}px, ${Math.max(8, Math.min(innerHeight - h - 8, y - h - 12))}px)`; }
+function hideTip() { tip.style.transform = 'translate(-9999px,-9999px)'; }
+function hull(t) { // screen polygon around a tower box
+  const top = Math.ceil(t.d.p / 1e5 / 9) + 0.9, x0 = t.x0 - 0.2, x1 = t.x0 + FOOT + 0.2, y0 = t.y0 - 0.2, y1 = t.y0 + FOOT + 0.2;
+  return [[x0, y0, top], [x1, y0, top], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0], [x0, y1, top]].map(p => P(...p));
+}
+function inside(pt, poly) { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if (((yi > pt[1]) !== (yj > pt[1])) && (pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi)) c = !c; } return c; }
+cv.addEventListener('pointermove', (e) => {
+  const r = cv.getBoundingClientRect(), pt = [e.clientX - r.left, e.clientY - r.top];
+  let hit = null; for (const t of TOWERS) if (inside(pt, hull(t))) hit = t; // front-most wins (earlier towers are in front)
+  if (!hit) { hideTip(); if (focus !== -1) setFocus(-1); return; }
+  const d = hit.d;
+  if (focus !== d.i) setFocus(d.i);
+  showTip(`<div class="t-head">${d.y}</div>
+    <div class="t-row"><span>Population</span><span>${inr(d.p)}</span></div>
+    <div class="t-row"><span>In lakh</span><span>${lakh(d.p)}</span></div>
+    ${d.i ? `<div class="t-row"><span><i class="sw" style="background:${RAMP[d.i]}"></i>Added since ${POP[d.i - 1].y}</span><span>+${lakh(d.add)} L</span></div><div class="t-row"><span>Decade growth</span><span>${d.g.toFixed(1)}%</span></div>` : ''}
+    <div class="t-note">${d.y === 2011 ? 'Includes the 2007 BBMP merger. ' : ''}${d.y === 2001 ? 'The slowest decade in the series. ' : ''}Highlighted: the layer this decade added, in every later tower.</div>`, e.clientX, e.clientY);
+});
+cv.addEventListener('pointerleave', () => { hideTip(); setFocus(-1); });
+
+/* ---------- table ---------- */
+document.getElementById('tbl').innerHTML = '<thead><tr><th>Census</th><th>Population</th><th>Lakh</th><th>Added</th><th>Decade growth</th></tr></thead><tbody>' +
+  POP.map(d => `<tr><td>${d.y}</td><td>${inr(d.p)}</td><td>${lakh(d.p)}</td><td>${d.i ? '+' + inr(d.add) : '–'}</td><td>${d.i ? d.g.toFixed(1) + '%' : '–'}</td></tr>`).join('') + '</tbody>';
+document.getElementById('dataBtn').onclick = () => { document.getElementById('sheet').hidden = false; };
+document.getElementById('closeSheet').onclick = () => { document.getElementById('sheet').hidden = true; };
+</script>
+</body>
+</html>

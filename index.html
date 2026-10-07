@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Isometric data visualizations of Bengaluru: land cover since 1973, Namma Metro, monsoon climate normals and census population, plus a Delhi Metro companion map.">
+<title>Isometric Bengaluru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Kannada:wdth,wght@75..125,300..800&family=Anek+Devanagari:wght@500..700&family=Martian+Mono:wght@300..600&display=swap">
+<link rel="stylesheet" href="shared.css">
+<script src="viz-only.js" defer></script>
+<style>
+/* Layout: a typographic masthead (the city's name in Kannada, set huge), then four cards, each a window
+   in its own piece's colourway. One deliberate look: granite grey, like the Peninsular Gneiss under the city. */
+:root {
+  --bg: #E6E4EA;        /* granite */
+  --ink: #17141E;
+  --muted: #5B5768;
+  --rule: #CFCBD8;
+  --panel: #F4F3F7;
+  --accent: #E0452C;    /* kumkum */
+  color-scheme: light;
+}
+html, body { height: auto; }
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(rgba(23,20,30,0.05) 1px, transparent 1.2px), radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1.2px);
+  background-size: 7px 7px, 11px 11px; background-position: 0 0, 3px 5px;
+}
+.page { max-width: 1240px; margin-inline: auto; padding: 8px var(--gutter) 56px; display: grid; gap: 44px; }
+.mast { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px 48px; align-items: end; padding-top: 44px; border-bottom: 1px solid var(--rule); padding-bottom: 28px; }
+.mast h1 { margin: 0; line-height: 0.9; display: contents; }
+.mast h1 .kn { grid-column: 1 / -1; display: block; line-height: 1; font-family: var(--display); font-weight: 800; font-size: clamp(4.2rem, 1.5rem + 11vw, 10.5rem); letter-spacing: -0.02em; }
+.mast h1 .lat { display: block; align-self: start; font-family: var(--display); font-weight: 300; font-stretch: 125%; font-size: clamp(1.3rem, 0.9rem + 1.8vw, 2.25rem); letter-spacing: 0.02em; color: var(--muted); }
+.mast h1 .lat b { font-weight: 700; color: var(--ink); }
+.mast .lede { margin: 0; max-width: 46ch; font-size: 1.02rem; color: var(--muted); text-wrap: pretty; }
+.mast .lede b { color: var(--ink); font-weight: 600; }
+.meta { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-top: 14px; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.card { display: grid; grid-template-rows: auto 1fr; text-decoration: none; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(23, 20, 30, 0.14); }
+.card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.shot { background: var(--card-bg); aspect-ratio: 16 / 10; position: relative; overflow: hidden; max-width: 100%; }
+.shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; transition: transform 0.6s ease; }
+.card:hover .shot img { transform: scale(1.03); }
+.body { padding: 16px 18px 18px; display: grid; gap: 8px; align-content: start; }
+.tagline { display: flex; flex-wrap: wrap; gap: 6px 12px; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.tagline .k { font-family: var(--display); font-size: 0.86rem; letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: 600; }
+.body h2 { margin: 0; font-family: var(--display); font-weight: 800; font-stretch: 115%; font-size: 1.7rem; line-height: 1; text-wrap: balance; }
+.body p { margin: 0; color: var(--muted); font-size: 0.9rem; text-wrap: pretty; }
+.body p b { color: var(--ink); font-weight: 600; }
+.swatches { display: flex; gap: 4px; margin-top: 4px; }
+.swatches i { width: 18px; height: 6px; border-radius: 2px; display: block; }
+.open { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); margin-top: 6px; }
+
+.card.wide { grid-column: 1 / -1; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); grid-template-rows: none; }
+.card.wide .shot { aspect-ratio: 16 / 9; height: 100%; }
+.card.wide .body { align-content: center; padding: 22px 26px; }
+.companion { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent); }
+.foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 36px; border-top: 1px solid var(--rule); padding-top: 24px; }
+.foot h3 { font-family: var(--mono); font-weight: 500; font-size: 0.64rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.foot p, .foot li { font-size: 0.82rem; color: var(--muted); margin: 0; }
+.foot ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+.foot a { color: var(--ink); }
+@media (max-width: 860px) {
+  .mast { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: 1fr; }
+  .card.wide { grid-template-columns: 1fr; }
+  .foot { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .card, .shot img { transition: none; } .card:hover { transform: none; } }
+</style>
+</head>
+<body>
+<nav class="series" aria-label="Isometric Bengaluru">
+  <a class="home" href="index.html" aria-current="page">ಬೆಂಗಳೂರು <span>Isometric</span></a>
+  <a href="landcover.html">Concrete Tide</a>
+  <a href="metro.html">Namma Metro</a>
+  <a href="monsoon.html">Monsoon Almanac</a>
+  <a href="people.html">Lakhs of People</a>
+  <a href="delhi-metro.html">Delhi Metro</a>
+</nav>
+<main class="page">
+  <header class="mast">
+    <h1><span class="kn">ಬೆಂಗಳೂರು</span><span class="lat"><b>Bengaluru</b>, in isometric</span></h1>
+    <div>
+      <p class="lede">Four data pieces about one city: the trees and lakes it paved over, the metro it built above and below its streets, the two monsoons that water it, and the people who came. Each has its own colourway, drawn from <b>kumkum</b>, <b>Mysore silk</b>, <b>tabebuia blossom</b> and the <b>metro's own line colours</b>. A companion map gives Delhi's metro the same layered treatment.</p>
+      <p class="meta">4 pieces + a Delhi companion · real data · hover anything</p>
+    </div>
+  </header>
+
+  <section class="grid" aria-label="Pieces">
+    <a class="card" href="landcover.html" style="--card-bg:#EEEAF3">
+      <div class="shot"><img src="thumbs/landcover.jpg" alt="Voxel disc of Bengaluru in 2002: red built-up blocks spreading from the centre through green tree canopies, ochre fields and blue lakes" width="1700" height="1056"></div>
+      <div class="body">
+        <div class="tagline"><span class="k">ಉದ್ಯಾನ ನಗರಿ</span><span>three.js WebGPU · TSL shaders</span></div>
+        <h2>Concrete Tide</h2>
+        <p>Land cover from 1973 to 2020. Built-up area went from <b>8%</b> to <b>93%</b>, and tree cover fell from <b>68%</b> to <b>3%</b>. The lakes froth over during the Bellandur years.</p>
+        <div class="swatches" aria-hidden="true"><i style="background:#E0452C"></i><i style="background:#1D8C57"></i><i style="background:#1E5FC9"></i><i style="background:#DBA842"></i></div>
+        <span class="open">Open the diorama →</span>
+      </div>
+    </a>
+    <a class="card" href="metro.html" style="--card-bg:#0A0F24">
+      <div class="shot"><img src="thumbs/metro.jpg" alt="Night-time isometric slab of Bengaluru with glowing purple, green and yellow metro lines, and dashed pink and blue lines under construction" width="1432" height="1200"></div>
+      <div class="body">
+        <div class="tagline"><span class="k">ನಮ್ಮ ಮೆಟ್ರೋ</span><span>three.js WebGPU · TSL · bloom</span></div>
+        <h2>Namma Metro, Layered</h2>
+        <p>Every opening since October 2011, on elevated viaducts and in tunnels seen through the city slab. <b>96 km</b> and <b>83 stations</b> today, with the Pink and Blue lines on the way. Scrub the timeline, hide lines, and switch tooltips, scene, tilt and thickness.</p>
+        <div class="swatches" aria-hidden="true"><i style="background:#9B4DE0"></i><i style="background:#138A4A"></i><i style="background:#E2B022"></i><i style="background:#F0679E"></i><i style="background:#2A9BE0"></i></div>
+        <span class="open">Ride the timeline →</span>
+      </div>
+    </a>
+    <a class="card" href="monsoon.html" style="--card-bg:#0B3A3F">
+      <div class="shot"><img src="thumbs/monsoon.jpg" alt="Isometric almanac on a teal plinth: pink rain-gauge columns for each month, cream tiles for rainy days, and gold temperature bars on the front face" width="1480" height="1580"></div>
+      <div class="body">
+        <div class="tagline"><span class="k">ಮಳೆ</span><span>hand-projected SVG</span></div>
+        <h2>Monsoon Almanac</h2>
+        <p>IMD normals for 1991–2020. <b>1,078 mm</b> of rain a year, wettest in <b>September</b>, with the northeast monsoon keeping October wet and May out-raining June.</p>
+        <div class="swatches" aria-hidden="true"><i style="background:#E0338A"></i><i style="background:#F6EEDC"></i><i style="background:#A8702E"></i><i style="background:#F1C766"></i><i style="background:#FFE7A1"></i></div>
+        <span class="open">Read the almanac →</span>
+      </div>
+    </a>
+    <a class="card" href="people.html" style="--card-bg:#FBEEF3">
+      <div class="shot"><img src="thumbs/people.jpg" alt="Eight isometric towers of pink-to-aubergine cubes rising toward the back, one per census from 1941 to 2011" width="1760" height="1284"></div>
+      <div class="body">
+        <div class="tagline"><span class="k">ಜನಸಂಖ್ಯೆ</span><span>Canvas 2D voxels</span></div>
+        <h2>Lakhs of People</h2>
+        <p>One cube per lakh. From <b>4 lakh</b> in 1941 to <b>84 lakh</b> in 2011, with every cube keeping the colour of the decade that added it.</p>
+        <div class="swatches" aria-hidden="true"><i style="background:#E97FB5"></i><i style="background:#C74C9B"></i><i style="background:#932D84"></i><i style="background:#581A64"></i><i style="background:#3B124E"></i></div>
+        <span class="open">Trace the layers →</span>
+      </div>
+    </a>
+    <a class="card wide" href="delhi-metro.html" style="--card-bg:#0A0F24">
+      <div class="shot"><img src="thumbs/delhi.jpg" alt="Night-time isometric slab of the Delhi region with the Yamuna crossing it and a dense web of glowing metro lines, Phase 4 corridors dashed" width="1840" height="1070"></div>
+      <div class="body">
+        <span class="companion">Companion piece</span>
+        <div class="tagline"><span class="k" lang="hi" style="font-family:'Anek Devanagari', var(--display)">दिल्ली मेट्रो</span><span>same engine · OpenStreetMap + Wikipedia</span></div>
+        <h2>Delhi Metro, Layered</h2>
+        <p>The Namma Metro treatment at Delhi's scale: <b>275 stations</b> and about <b>383 km</b> across Delhi, Noida and Gurugram since December 2002, with the Yamuna for bearings and six Phase 4 corridors dashed.</p>
+        <div class="swatches" aria-hidden="true"><i style="background:#E8413C"></i><i style="background:#F2C500"></i><i style="background:#3D6FE0"></i><i style="background:#1E9A4C"></i><i style="background:#7B4FC9"></i><i style="background:#F37AAE"></i><i style="background:#C2338A"></i><i style="background:#F28C1E"></i></div>
+        <span class="open">Explore Delhi →</span>
+      </div>
+    </a>
+  </section>
+
+  <footer class="foot">
+    <div>
+      <h3>How they're made</h3>
+      <p>The two 3D pieces use three.js r186 with the WebGPU renderer and TSL node materials, and fall back to WebGL 2 where WebGPU isn't available. The almanac is plain SVG projected by hand; the towers are Canvas 2D. Every palette was checked for colour-blind separation, and each piece has a data table.</p>
+    </div>
+    <div>
+      <h3>Sources</h3>
+      <ul>
+        <li><a href="https://wgbis.ces.iisc.ac.in/energy/water/paper/ETR131/section6.html" target="_blank" rel="noopener">IISc Energy &amp; Wetlands Research Group, ETR 131</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Namma_Metro" target="_blank" rel="noopener">Namma Metro (BMRCL figures)</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Bangalore#Climate" target="_blank" rel="noopener">IMD climate normals 1991–2020</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/Bangalore#Demographics" target="_blank" rel="noopener">Census of India population series</a></li>
+        <li><a href="https://en.wikipedia.org/wiki/List_of_Delhi_Metro_stations" target="_blank" rel="noopener">Delhi Metro stations</a> and <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Read with care</h3>
+      <p>The land-cover layout and the metro station positions are schematic. Shares, dates, lengths and counts are as published. City boundaries changed between censuses, most of all in 2007.</p>
+    </div>
+  </footer>
+</main>
+</body>
+</html>

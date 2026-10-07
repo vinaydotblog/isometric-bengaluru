@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Concrete Tide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Kannada:wdth,wght@75..125,300..800&family=Martian+Mono:wght@300..600&display=swap">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Layout: a full-bleed voxel diorama of the city. Title floats top-left, the live legend top-right,
+   and a year rail of 100%-stacked columns runs along the bottom and drives the scene. */
+:root {
+  --bg: #EEEAF3;       /* jacaranda-mist ground */
+  --ink: #22183A;
+  --muted: #62587A;
+  --rule: #D5CDE3;
+  --panel: #FBFAFD;
+  --accent: #E0452C;
+  --built: #E0452C;    /* kumkum vermilion */
+  --veg: #1D8C57;      /* rain-tree green */
+  --water: #1E5FC9;    /* tank blue */
+  --open: #DBA842;     /* ragi-field ochre */
+  color-scheme: light;
+}
+body { overflow: hidden; background: radial-gradient(120% 90% at 55% 45%, #F8F6FB 0%, var(--bg) 55%, #E3DDEC 100%); background-color: var(--bg); }
+.app { position: relative; height: calc(100% - 34px); }
+.stage { position: absolute; inset: 0; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.intro { position: absolute; top: 18px; left: var(--gutter); max-width: 420px; z-index: 3; pointer-events: none; }
+.intro * { pointer-events: auto; }
+.legend {
+  position: absolute; top: 18px; right: var(--gutter); z-index: 3; width: 248px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px 12px;
+}
+.legend .yr { font-family: var(--display); font-weight: 800; font-stretch: 120%; font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.legend .yr-sub { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 2px 0 10px; }
+.lg-row { display: grid; grid-template-columns: 14px 1fr auto; gap: 2px 8px; align-items: baseline; padding-block: 7px; border-top: 1px solid var(--rule); }
+.lg-row .sw { width: 12px; height: 12px; margin: 0; align-self: center; }
+.lg-row .nm { font-weight: 600; }
+.lg-row .pc { font-family: var(--mono); font-size: 0.86rem; font-variant-numeric: tabular-nums; text-align: right; }
+.lg-row .dl { grid-column: 2 / 4; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rail {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  padding: 0 var(--gutter) calc(14px + env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: end;
+}
+.track-wrap { overflow-x: auto; min-width: 0; padding-top: 22px; }
+.track { position: relative; height: 104px; min-width: 520px; margin-inline: 18px; }
+.track::before { content: ""; position: absolute; left: -18px; right: -18px; bottom: 22px; height: 1px; background: var(--rule); }
+.yb {
+  position: absolute; bottom: 0; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: none; border: 0; padding: 0 4px; cursor: pointer;
+}
+.yb .stack { width: 18px; height: 70px; display: flex; flex-direction: column-reverse; gap: 2px; border-radius: 4px 4px 0 0; overflow: hidden; outline: 2px solid transparent; outline-offset: 2px; }
+.yb .stack i { display: block; width: 100%; min-height: 0; }
+.yb .lbl { font-family: var(--mono); font-size: 0.66rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.yb[aria-pressed="true"] .stack { outline-color: var(--ink); }
+.yb[aria-pressed="true"] .lbl { color: var(--ink); font-weight: 600; }
+.yb:hover .lbl { color: var(--ink); }
+.event { position: absolute; bottom: 22px; transform: translateX(-50%); height: 86px; border-left: 1px dashed var(--muted); pointer-events: none; }
+.event span { position: absolute; top: -14px; right: 4px; white-space: nowrap; font-size: 0.66rem; color: var(--muted); }
+.rail .side { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; padding-bottom: 22px; }
+.rail .src { max-width: 250px; padding-bottom: 22px; }
+.tag {
+  position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none;
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink); background: color-mix(in srgb, var(--panel) 82%, transparent);
+  padding: 2px 6px; border-radius: 3px; white-space: nowrap; transform: translate(-9999px, 0);
+}
+.tag.compass { background: var(--ink); color: var(--panel); border-radius: 50%; width: 20px; height: 20px; padding: 0; display: grid; place-items: center; font-weight: 600; }
+.fallback { position: absolute; inset: 30% var(--gutter) auto; text-align: center; color: var(--muted); }
+@media (max-width: 760px) {
+  body { overflow: auto; }
+  .app { height: auto; display: flex; flex-direction: column; }
+  .intro, .legend, .rail { position: static; }
+  .intro { order: -1; padding: 14px var(--gutter) 0; max-width: none; }
+  .stage { position: relative; height: 56vh; min-height: 320px; }
+  .legend { width: auto; margin: 0 var(--gutter); }
+  .rail { grid-template-columns: 1fr; padding-top: 6px; }
+  .rail .side { flex-direction: row; padding-bottom: 0; }
+  .rail .src { max-width: none; }
+}
+</style>
+<script src="viz-only.js" defer></script>
+</head>
+<body>
+<nav class="series" aria-label="Isometric Bengaluru">
+  <a class="home" href="index.html">ಬೆಂಗಳೂರು <span>Isometric</span></a>
+  <a href="landcover.html" aria-current="page">Concrete Tide</a>
+  <a href="metro.html">Namma Metro</a>
+  <a href="monsoon.html">Monsoon Almanac</a>
+  <a href="people.html">Lakhs of People</a>
+  <a href="delhi-metro.html">Delhi Metro</a>
+</nav>
+<main class="app">
+  <div class="stage" id="stage"></div>
+  <header class="intro">
+    <p class="eyebrow"><span class="kn">ಉದ್ಯಾನ ನಗರಿ</span>Land cover · 1973–2020</p>
+    <h1 class="title">Concrete Tide</h1>
+    <p class="dek">In 1973, <b>68%</b> of Bengaluru was tree cover. By 2020, <b>93%</b> was built over or paved, and green had fallen to <b>3%</b>.</p>
+  </header>
+  <aside class="legend" aria-live="polite">
+    <div class="yr" id="yr">1973</div>
+    <div class="yr-sub">Share of city area</div>
+    <div id="lg"></div>
+  </aside>
+  <section class="rail">
+    <div class="side">
+      <button class="btn" id="play" aria-pressed="false">▶ Play 1973–2020</button>
+      <button class="btn" id="dataBtn">Data table</button>
+    </div>
+    <div class="track-wrap"><div class="track" id="track"></div></div>
+    <p class="source src">Source: T.V. Ramachandra et al., Energy &amp; Wetlands Research Group, IISc, <a href="https://wgbis.ces.iisc.ac.in/energy/water/paper/ETR131/section6.html" target="_blank" rel="noopener">ENVIS Technical Report 131</a>. The layout is schematic. Each cell is an equal slice of the city; lakes and parks sit roughly where they are.</p>
+  </section>
+  <div class="sheet" id="sheet" hidden>
+    <button class="btn close" id="closeSheet">Close</button>
+    <h2>Land cover, % of city area</h2>
+    <div class="table-wrap"><table id="tbl"></table></div>
+  </div>
+</main>
+<div class="tip" id="tip" role="status"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three/webgpu';
+import { color, float, vec3, uniform, positionWorld, normalWorld, sin, mix, step, smoothstep, fract, abs, hash, floor, mx_noise_float } from 'three/tsl';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ---------------- data (IISc EWRG, ETR 131) ---------------- */
+const DATA = [
+  { y: 1973, b: 7.97,  v: 68.27, w: 3.40, o: 20.35 },
+  { y: 1992, b: 27.30, v: 46.22, w: 2.62, o: 23.86 },
+  { y: 1999, b: 35.37, v: 45.77, w: 2.26, o: 16.61 },
+  { y: 2002, b: 37.74, v: 38.72, w: 1.85, o: 21.70 },
+  { y: 2008, b: 49.54, v: 28.19, w: 0.86, o: 21.41 },
+  { y: 2014, b: 65.43, v: 8.40,  w: 0.74, o: 25.43 },
+  { y: 2017, b: 78.65, v: 6.46,  w: 1.03, o: 13.86 },
+  { y: 2020, b: 93.26, v: 2.96,  w: 2.09, o: 1.69 },
+];
+const CLS = [
+  { k: 'b', name: 'Built-up',   hex: '#E0452C' },
+  { k: 'v', name: 'Vegetation', hex: '#1D8C57' },
+  { k: 'w', name: 'Water',      hex: '#1E5FC9' },
+  { k: 'o', name: 'Open land',  hex: '#DBA842', note: 'farmland, scrub, bare ground' },
+];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => n.toFixed(2) + '%';
+
+/* ---------------- a deterministic, schematic city ---------------- */
+let seed = 20200731;
+const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const lattice = new Map();
+const lat = (x, y) => { const k = x + ',' + y; if (!lattice.has(k)) lattice.set(k, rnd()); return lattice.get(k); };
+const smooth = (t) => t * t * (3 - 2 * t);
+function noise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = smooth(x - xi), yf = smooth(y - yi);
+  const a = lat(xi, yi), b = lat(xi + 1, yi), c = lat(xi, yi + 1), d = lat(xi + 1, yi + 1);
+  return a + (b - a) * xf + (c - a) * yf + (a - b - c + d) * xf * yf;
+}
+const R = 24;
+// map coords (east, north) <-> world (x, z); north points to the top of the default isometric view
+const S2 = Math.SQRT1_2;
+const toWorld = (e, n) => ({ x: (e - n) * S2, z: (-e - n) * S2 });
+const toMap = (x, z) => ({ e: (x - z) * S2, n: (-x - z) * S2 });
+
+const cells = [];
+for (let i = -R; i <= R; i++) for (let j = -R; j <= R; j++) {
+  const d = Math.hypot(i, j);
+  if (d <= R + 0.35) { const m = toMap(i, j); cells.push({ x: i, z: j, e: m.e, n: m.n, feature: null }); }
+}
+const N = cells.length;
+
+// landmarks in map-cell units (≈0.85 km per cell, centred near Shivajinagar)
+const CORE = { e: -3.6, n: 0.9 };                   // Majestic / the old pete
+const HUBS = [ { e: 19, n: 0, s: 1 }, { e: 7.6, n: -16.3, s: 0.9 }, { e: -10.2, n: 7.8, s: 0.6 }, { e: -1.2, n: 17, s: 0.5 } ]; // Whitefield, E-City, Peenya, Yelahanka
+const ROADS = [135, 90, 15, -50, -150, -100, 175, 40].map(a => a * Math.PI / 180); // Tumkur, Bellary, Old Madras, Hosur, Mysore, Kanakapura, Magadi, ORR-NE
+const LAKES = [
+  { name: 'Bellandur Lake', e: 8.9, n: -4.6, size: 9, p: 0.97, note: 'Frothed and caught fire in 2015–17' },
+  { name: 'Varthur Lake', e: 17.8, n: -3.5, size: 5, p: 0.93, note: 'Downstream of Bellandur' },
+  { name: 'Hebbal Lake', e: -1.3, n: 9.8, size: 3, p: 0.95 },
+  { name: 'Madiwala Lake', e: 1.9, n: -8.1, size: 3, p: 0.9 },
+  { name: 'Yelahanka Lake', e: -2.5, n: 17, size: 3, p: 0.88 },
+  { name: 'Ulsoor Lake', e: 2.5, n: 1.7, size: 2, p: 0.99 },
+  { name: 'Sankey Tank', e: -3.2, n: 5.1, size: 2, p: 0.98 },
+  { name: 'Agara Lake', e: 5.3, n: -6.1, size: 2, p: 0.84 },
+  { name: 'Hulimavu Lake', e: 1.0, n: -12, size: 2, p: 0.8 },
+  { name: 'Kengeri Lake', e: -14, n: -7.2, size: 2, p: 0.72 },
+  { name: 'Nagavara Lake', e: 2.5, n: 9.1, size: 2, p: 0.86 },
+  { name: 'Dharmambudhi Lake', e: -3.6, n: 0.9, size: 3, p: 0.12, note: 'Filled in. Now Kempegowda Bus Station, Majestic' },
+  { name: 'Sampangi Tank', e: -0.9, n: -0.4, size: 2, p: 0.15, note: 'Filled in. Now Kanteerava Stadium' },
+  { name: 'Challaghatta Tank', e: 5.4, n: -2.6, size: 4, p: 0.2, note: 'Filled in. Now the KGA golf course' },
+  { name: 'Akkithimmanahalli Tank', e: -0.4, n: -1.6, size: 1, p: 0.1, note: 'Filled in. Now the hockey stadium' },
+  { name: 'Shoolay Tank', e: 1.0, n: -0.9, size: 1, p: 0.1, note: 'Filled in. Now the Bangalore Football Stadium' },
+];
+const PARKS = [
+  { name: 'Cubbon Park', e: -0.9, n: 0.8, size: 3 },
+  { name: 'Lalbagh', e: -1.9, n: -2.5, size: 3 },
+  { name: 'IISc campus', e: -4.3, n: 6.8, size: 3 },
+  { name: 'GKVK campus', e: -3.2, n: 14.1, size: 6 },
+  { name: 'Jnanabharathi campus', e: -12.1, n: -3.3, size: 6 },
+  { name: 'Turahalli forest', e: -10.8, n: -13, size: 4 },
+];
+// assign feature cells: nearest free cells to each centre
+function claim(f, kind) {
+  const free = cells.filter(c => !c.feature).map(c => ({ c, d: Math.hypot(c.e - f.e, c.n - f.n) })).sort((a, b) => a.d - b.d);
+  free.slice(0, f.size).forEach(({ c, d }, idx) => { c.feature = { ...f, kind }; c.lakeRank = f.p - idx * 0.004; });
+}
+PARKS.forEach(p => claim(p, 'park'));
+LAKES.forEach(l => claim(l, 'lake'));
+// scatter small village tanks that vanish first
+for (let t = 0; t < 16; t++) {
+  const a = rnd() * Math.PI * 2, r = 6 + rnd() * 16;
+  claim({ name: 'Village tank', e: Math.cos(a) * r, n: Math.sin(a) * r, size: 1, p: 0.05 + rnd() * 0.3, note: 'One of hundreds of small tanks lost to layouts' }, 'lake');
+}
+
+for (const c of cells) {
+  const dCore = Math.hypot(c.e - CORE.e, c.n - CORE.n) / R;
+  const ang = Math.atan2(c.n - CORE.n, c.e - CORE.e);
+  const dist = dCore * R;
+  let corridor = 0;
+  for (const a of ROADS) {
+    const along = (c.e - CORE.e) * Math.cos(a) + (c.n - CORE.n) * Math.sin(a);
+    if (along <= 0) continue;
+    const perp = Math.abs(-(c.e - CORE.e) * Math.sin(a) + (c.n - CORE.n) * Math.cos(a));
+    corridor = Math.max(corridor, Math.exp(-((perp / 1.8) ** 2)));
+  }
+  let hub = 0;
+  for (const h of HUBS) hub = Math.max(hub, h.s * Math.exp(-((Math.hypot(c.e - h.e, c.n - h.n) / 4.5) ** 2)));
+  const nz = noise(c.e * 0.22 + 40, c.n * 0.22 + 40);
+  c.pri = dCore + (nz - 0.5) * 0.38 - corridor * 0.16 - hub * 0.32;
+  c.veg = noise(c.e * 0.3 + 90, c.n * 0.3 + 10) + (c.feature?.kind === 'park' ? 10 : 0);
+  if (c.feature?.kind === 'park') c.pri += 10;
+  c.lakeRank = c.feature?.kind === 'lake' ? c.lakeRank : -1;
+  c.hBase = 0.35 + Math.pow(Math.max(0, 1 - dCore * 1.05), 1.8) * 3.2 + hub * 2.0 + noise(c.e * 0.9, c.n * 0.9) * 0.9;
+  c.r = Math.hypot(c.x, c.z) / R;
+  c.cls = null; c.tcls = null; c.g = 0; c.h = 0; c.th = 0; c.start = 0;
+}
+
+// largest-remainder rounding so the four counts always sum to N
+function counts(row) {
+  const raw = CLS.map(k => row[k.k] / 100 * N);
+  const fl = raw.map(Math.floor);
+  let left = N - fl.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [r - fl[i], i]).sort((a, b) => b[0] - a[0]).slice(0, left).forEach(([, i]) => fl[i]++);
+  return { b: fl[0], v: fl[1], w: fl[2], o: fl[3] };
+}
+function classify(row) {
+  const n = counts(row), out = new Array(N).fill('o');
+  const idx = cells.map((c, i) => i);
+  const lakes = idx.filter(i => cells[i].lakeRank >= 0).sort((a, b) => cells[b].lakeRank - cells[a].lakeRank);
+  lakes.slice(0, n.w).forEach(i => out[i] = 'w');
+  const rest = idx.filter(i => out[i] !== 'w').sort((a, b) => cells[a].pri - cells[b].pri);
+  rest.slice(0, n.b).forEach(i => out[i] = 'b');
+  const rem = rest.slice(n.b).sort((a, b) => cells[b].veg - cells[a].veg);
+  rem.slice(0, n.v).forEach(i => out[i] = 'v');
+  return out;
+}
+const ASSIGN = DATA.map(classify);
+const heightFor = (c, k, year) => {
+  if (k === 'b') return c.hBase * (0.45 + 0.55 * (year - 1973) / 47);
+  if (k === 'v') return 1; if (k === 'w') return 0.07; return 0.13;
+};
+
+/* ---------------- renderer ---------------- */
+const stage = $('#stage');
+let renderer;
+try {
+  renderer = new THREE.WebGPURenderer({ antialias: true, alpha: true });
+  await renderer.init();
+} catch (err) {
+  stage.innerHTML = '<p class="fallback">This browser could not start WebGPU or WebGL 2, so the 3D view is off. The data table below still has every figure.</p>';
+  console.error(err);
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -400, 400);
+camera.position.set(60, 60, 60);
+const controls = new OrbitControls(camera, renderer.domElement);
+const ISO = Math.acos(1 / Math.sqrt(3));
+Object.assign(controls, { enableDamping: true, enablePan: false, minPolarAngle: ISO, maxPolarAngle: ISO, minZoom: 0.7, maxZoom: 3.2, rotateSpeed: 0.6 });
+controls.target.set(0, 1.5, 0);
+
+scene.add(new THREE.HemisphereLight('#FFFFFF', '#B7A6D6', 1.55));
+const sun = new THREE.DirectionalLight('#FFF1DE', 2.3);
+sun.position.set(-38, 62, -8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -34, right: 34, top: 34, bottom: -34, near: 1, far: 160 });
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+/* ---------------- TSL materials ---------------- */
+const uTime = uniform(0);
+const uFoam = uniform(0);
+const cellId = floor(positionWorld.x.add(100.5)).mul(263.0).add(floor(positionWorld.z.add(100.5)));
+const vary = hash(cellId);
+const top = step(0.5, normalWorld.y);
+const side = float(1).sub(top);
+
+// built: vermilion blocks with window grids on the walls and paler roofs
+const builtMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.62, metalness: 0 });
+{
+  const u = mix(positionWorld.z, positionWorld.x, abs(normalWorld.z));
+  const rowM = step(0.42, fract(positionWorld.y.mul(3.6)));
+  const colM = step(0.34, fract(u.add(0.5).mul(3.5)));
+  const win = side.mul(rowM).mul(colM).mul(step(0.3, positionWorld.y));
+  const winId = floor(positionWorld.y.mul(3.6)).mul(17.0).add(floor(u.add(100.5).mul(3.5))).add(cellId.mul(7.0));
+  const lit = step(0.86, hash(winId));
+  const base = color('#E0452C').mul(float(0.86).add(vary.mul(0.26)));
+  builtMat.colorNode = mix(mix(base, color('#FF9A7A'), top.mul(0.32)), color('#5E1726'), win.mul(0.62));
+  builtMat.emissiveNode = color('#FFC46B').mul(win.mul(lit).mul(0.85));
+}
+// vegetation: rounded canopies, darker at the base
+const vegMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, flatShading: true });
+vegMat.colorNode = mix(color('#0C4F31'), color('#2BA66A'), smoothstep(0.05, 0.75, positionWorld.y)).mul(float(0.85).add(vary.mul(0.3)));
+const tileMat = new THREE.MeshStandardNodeMaterial({ roughness: 1 });
+tileMat.colorNode = color('#15603E');
+// water: slow interference ripples; Bellandur-style froth fades in for 2014–2017
+const waterMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.18, metalness: 0.05 });
+{
+  const rip = sin(positionWorld.x.mul(2.2).add(uTime.mul(1.5))).mul(sin(positionWorld.z.mul(1.8).sub(uTime.mul(1.1)))).mul(0.5).add(0.5);
+  const n = mx_noise_float(vec3(positionWorld.x.mul(0.8), positionWorld.z.mul(0.8), uTime.mul(0.12)));
+  const froth = smoothstep(0.05, 0.4, n).mul(uFoam);
+  waterMat.colorNode = mix(mix(color('#1E5FC9'), color('#5AA8F2'), rip.mul(0.5)), color('#FFFFFF'), froth);
+  waterMat.emissiveNode = color('#123E8A').mul(0.25);
+}
+// open land: striped fields, stripe direction varies per cell
+const openMat = new THREE.MeshStandardNodeMaterial({ roughness: 1 });
+{
+  const coord = mix(positionWorld.x, positionWorld.z, step(0.5, vary));
+  const stripe = step(0.5, fract(coord.mul(4.0)));
+  openMat.colorNode = mix(color('#DBA842'), color('#B9832A'), stripe.mul(0.4));
+}
+// plinth: aubergine drum with a zari-gold border, pale ground on top
+const plinthMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.8 });
+{
+  const band = step(-0.72, positionWorld.y).mul(step(positionWorld.y, -0.5));
+  const thin = step(-1.42, positionWorld.y).mul(step(positionWorld.y, -1.34));
+  const wall = mix(color('#3A2A55'), color('#E8B84A'), band.add(thin).min(1));
+  plinthMat.colorNode = mix(wall, color('#D8CFE6'), top);
+}
+
+/* ---------------- meshes ---------------- */
+const boxGeo = new THREE.BoxGeometry(0.86, 1, 0.86); boxGeo.translate(0, 0.5, 0);
+const flatGeo = new THREE.BoxGeometry(0.97, 1, 0.97); flatGeo.translate(0, 0.5, 0);
+const tileGeo = new THREE.BoxGeometry(0.88, 0.1, 0.88); tileGeo.translate(0, 0.05, 0);
+const canopyGeo = new THREE.IcosahedronGeometry(0.46, 1);
+const mk = (geo, mat, cast = true) => { const m = new THREE.InstancedMesh(geo, mat, N); m.castShadow = cast; m.receiveShadow = true; m.count = 0; m.frustumCulled = false; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); return m; };
+const M = { b: mk(boxGeo, builtMat), v: mk(canopyGeo, vegMat), t: mk(tileGeo, tileMat, false), w: mk(flatGeo, waterMat, false), o: mk(flatGeo, openMat, false) };
+const owner = { b: [], v: [], t: [], w: [], o: [] };
+const plinth = new THREE.Mesh(new THREE.CylinderGeometry(R + 1.6, R + 2.3, 2.2, 120), plinthMat);
+plinth.position.y = -1.1; plinth.receiveShadow = true; scene.add(plinth);
+
+const dummy = new THREE.Object3D();
+function writeMatrices() {
+  const n = { b: 0, v: 0, t: 0, w: 0, o: 0 };
+  const put = (k, ci, x, y, z, sx, sy, sz) => {
+    dummy.position.set(x, y, z); dummy.scale.set(sx, sy, sz); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
+    M[k].setMatrixAt(n[k], dummy.matrix); owner[k][n[k]] = ci; n[k]++;
+  };
+  cells.forEach((c, ci) => {
+    const g = c.g; if (g <= 0.001 || !c.cls) return;
+    const e = 1 - Math.pow(1 - g, 3);
+    if (c.cls === 'b') put('b', ci, c.x, 0, c.z, 1, Math.max(0.02, c.h * e), 1);
+    else if (c.cls === 'v') { put('t', ci, c.x, 0, c.z, 1, 1, 1); const s = (0.72 + 0.3 * ((ci * 7919) % 97) / 97) * e; put('v', ci, c.x, 0.1 + 0.4 * s, c.z, s, s * 0.95, s); }
+    else if (c.cls === 'w') put('w', ci, c.x, 0, c.z, 1, 0.07 * e, 1);
+    else put('o', ci, c.x, 0, c.z, 1, 0.13 * e, 1);
+  });
+  for (const k in M) { M[k].count = n[k]; M[k].instanceMatrix.needsUpdate = true; }
+}
+
+/* ---------------- year state ---------------- */
+let yearIdx = 0, animating = false;
+function setYear(i, instant = false) {
+  yearIdx = i;
+  const row = DATA[i], a = ASSIGN[i], now = performance.now() / 1000;
+  cells.forEach((c, ci) => {
+    c.tcls = a[ci]; c.th = heightFor(c, a[ci], row.y);
+    c.start = instant ? 0 : now + c.r * 0.7 + (c.pri % 0.1);
+    if (instant) { c.cls = c.tcls; c.g = 1; c.h = c.th; }
+  });
+  uFoam.value = (row.y >= 2014 && row.y <= 2017) ? 1 : 0;
+  animating = !instant;
+  if (instant) writeMatrices();
+  updateLegend(); updateRail();
+}
+
+/* ---------------- legend, rail, table ---------------- */
+function updateLegend() {
+  const row = DATA[yearIdx], base = DATA[0];
+  $('#yr').textContent = row.y;
+  $('#lg').innerHTML = CLS.map(k => {
+    const d = row[k.k] - base[k.k];
+    const dl = yearIdx === 0 ? (k.note || 'baseline year') : `${d >= 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(2)} pts since 1973`;
+    return `<div class="lg-row"><span class="sw" style="background:${k.hex}"></span><span class="nm">${k.name}</span><span class="pc">${fmt(row[k.k])}</span><span class="dl">${dl}</span></div>`;
+  }).join('');
+}
+const track = $('#track');
+const X = (y) => ((y - 1973) / (2020 - 1973)) * 100;
+track.innerHTML = `<div class="event" style="left:${X(2015.5)}%"><span>Bellandur froth &amp; fire, 2015–17</span></div>` + DATA.map((r, i) =>
+  `<button class="yb" data-i="${i}" style="left:${X(r.y)}%" aria-pressed="false" aria-label="${r.y}: built-up ${fmt(r.b)}, vegetation ${fmt(r.v)}, water ${fmt(r.w)}, open land ${fmt(r.o)}">
+     <span class="stack">${CLS.map(k => `<i style="height:${r[k.k]}%;background:${k.hex}"></i>`).join('')}</span><span class="lbl">${r.y}</span></button>`).join('');
+function updateRail() { track.querySelectorAll('.yb').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.i === yearIdx))); }
+track.addEventListener('click', (e) => { const b = e.target.closest('.yb'); if (b) { stopPlay(); setYear(+b.dataset.i, reduce); } });
+
+const tip = $('#tip');
+const showTip = (html, x, y) => {
+  tip.innerHTML = html;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  const tx = Math.min(innerWidth - w - 8, x + 16), ty = Math.max(8, Math.min(innerHeight - h - 8, y - h - 12));
+  tip.style.transform = `translate(${tx}px, ${ty}px)`;
+};
+const hideTip = () => { tip.style.transform = 'translate(-9999px,-9999px)'; };
+track.addEventListener('pointermove', (e) => {
+  const b = e.target.closest('.yb'); if (!b) return hideTip();
+  const r = DATA[+b.dataset.i];
+  showTip(`<div class="t-head">${r.y}</div>` + CLS.map(k => `<div class="t-row"><span><i class="sw" style="background:${k.hex}"></i>${k.name}</span><span>${fmt(r[k.k])}</span></div>`).join(''), e.clientX, e.clientY);
+});
+track.addEventListener('pointerleave', hideTip);
+
+$('#tbl').innerHTML = `<thead><tr><th>Year</th>${CLS.map(k => `<th>${k.name}</th>`).join('')}</tr></thead><tbody>` +
+  DATA.map(r => `<tr><td>${r.y}</td>${CLS.map(k => `<td>${r[k.k].toFixed(2)}</td>`).join('')}</tr>`).join('') + '</tbody>';
+$('#dataBtn').onclick = () => { $('#sheet').hidden = false; };
+$('#closeSheet').onclick = () => { $('#sheet').hidden = true; };
+
+let playTimer = null;
+function stopPlay() { clearInterval(playTimer); playTimer = null; $('#play').setAttribute('aria-pressed', 'false'); $('#play').textContent = '▶ Play 1973–2020'; }
+function startPlay() {
+  $('#play').setAttribute('aria-pressed', 'true'); $('#play').textContent = '❚❚ Pause';
+  if (yearIdx === DATA.length - 1) setYear(0, true);
+  playTimer = setInterval(() => { if (yearIdx >= DATA.length - 1) return stopPlay(); setYear(yearIdx + 1); }, 1900);
+}
+$('#play').onclick = () => (playTimer ? stopPlay() : startPlay());
+
+/* ---------------- labels projected from the scene ---------------- */
+const TAGS = [
+  { t: 'Majestic', ...CORE }, { t: 'Kengeri', e: -14, n: -7.2 }, { t: 'Bellandur', e: 8.9, n: -4.6 },
+  { t: 'Whitefield', e: 19, n: 0 }, { t: 'Hebbal', e: -1.3, n: 9.8 }, { t: 'Electronic City', e: 7.6, n: -16.3 },
+].map(o => { const el = document.createElement('div'); el.className = 'tag'; el.textContent = o.t; stage.appendChild(el); const w = toWorld(o.e, o.n); return { el, v: new THREE.Vector3(w.x, 0.6, w.z) }; });
+{ const el = document.createElement('div'); el.className = 'tag compass'; el.textContent = 'N'; stage.appendChild(el); const w = toWorld(0, R + 3.2); TAGS.push({ el, v: new THREE.Vector3(w.x, 0, w.z) }); }
+const pv = new THREE.Vector3();
+function placeTags() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  for (const t of TAGS) { pv.copy(t.v).project(camera); t.el.style.transform = `translate(${(pv.x * 0.5 + 0.5) * W - t.el.offsetWidth / 2}px, ${(-pv.y * 0.5 + 0.5) * H - 22}px)`; }
+}
+
+/* ---------------- hover picking ---------------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let pointer = null;
+renderer.domElement.addEventListener('pointermove', (e) => { const r = renderer.domElement.getBoundingClientRect(); pointer = { x: e.clientX, y: e.clientY, nx: ((e.clientX - r.left) / r.width) * 2 - 1, ny: -((e.clientY - r.top) / r.height) * 2 + 1 }; });
+renderer.domElement.addEventListener('pointerleave', () => { pointer = null; hideTip(); });
+function pick() {
+  if (!pointer) return;
+  ndc.set(pointer.nx, pointer.ny); ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects([M.b, M.v, M.t, M.w, M.o], false)[0];
+  if (!hit) return hideTip();
+  const key = Object.keys(M).find(k => M[k] === hit.object);
+  const c = cells[owner[key][hit.instanceId]]; if (!c) return hideTip();
+  const k = CLS.find(q => q.k === c.cls), row = DATA[yearIdx];
+  const f = c.feature;
+  let note = '';
+  if (f && (f.kind === 'park' || (f.kind === 'lake' && c.cls === 'w'))) note = `<div class="t-note">${f.name}${f.note ? ' · ' + f.note : ''}</div>`;
+  else if (f && f.kind === 'lake') note = `<div class="t-note">Was ${f.name}${f.note ? '. ' + f.note : ''}</div>`;
+  showTip(`<div class="t-head"><i class="sw" style="background:${k.hex}"></i>${k.name}</div>
+    <div class="t-row"><span>Share in ${row.y}</span><span>${fmt(row[k.k])}</span></div>
+    <div class="t-row"><span>Cells</span><span>${counts(row)[k.k].toLocaleString('en-IN')} of ${N.toLocaleString('en-IN')}</span></div>${note}`, pointer.x, pointer.y);
+}
+
+/* ---------------- sizing + loop ---------------- */
+function resize() {
+  const W = stage.clientWidth, H = stage.clientHeight; if (!W || !H) return;
+  renderer.setSize(W, H, false);
+  const aspect = W / H, narrow = W < 760;
+  const h = Math.max(narrow ? 44 : 50, (narrow ? 58 : 76) / aspect);
+  Object.assign(camera, { left: -h * aspect / 2, right: h * aspect / 2, top: h / 2, bottom: -h / 2 });
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+
+let last = performance.now() / 1000, pickFrame = 0;
+renderer.setAnimationLoop(() => {
+  const now = performance.now() / 1000, dt = Math.min(0.05, now - last); last = now;
+  if (!reduce) uTime.value = now;
+  if (animating) {
+    let busy = false;
+    for (const c of cells) {
+      if (now < c.start) { busy = true; continue; }
+      if (c.cls !== c.tcls) { c.g -= dt * 5; if (c.g <= 0) { c.g = 0; c.cls = c.tcls; c.h = c.th; } busy = true; }
+      else if (c.g < 1) { c.g = Math.min(1, c.g + dt * 3.2); busy = true; }
+      if (Math.abs(c.h - c.th) > 0.002) { c.h += (c.th - c.h) * Math.min(1, dt * 5); busy = true; }
+    }
+    writeMatrices(); animating = busy;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  placeTags();
+  if (++pickFrame % 3 === 0) pick();
+});
+
+if (reduce) setYear(DATA.length - 1, true);
+else { setYear(0, true); setTimeout(() => { if (!playTimer && yearIdx === 0) startPlay(); }, 1200); }
+</script>
+</body>
+</html>

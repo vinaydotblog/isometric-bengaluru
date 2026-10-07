@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Monsoon Almanac</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anek+Kannada:wdth,wght@75..125,300..800&family=Martian+Mono:wght@300..600&display=swap">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Layout: a Mysore-silk colourway. Text column on the left, one hand-projected isometric almanac on the right:
+   rain gauges on the floor, temperature range bars on the back wall, rainy days laid out as floor tiles. */
+:root {
+  --bg: #0B3A3F;        /* peacock body */
+  --ink: #F6EEDC;       /* raw-silk cream */
+  --muted: #A6C3BF;
+  --rule: #1F5A60;
+  --panel: #0E474D;
+  --accent: #E9B949;    /* zari gold */
+  --rain: #E0338A;      /* rani pink */
+  --rain-top: #F47AB5;
+  --rain-side: #A3195C;
+  color-scheme: dark;
+}
+body { background: radial-gradient(90% 80% at 70% 40%, #0F4A50 0%, var(--bg) 60%, #082D31 100%); background-color: var(--bg); }
+.wrap { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); grid-template-areas: "head fig" "rest fig"; align-content: start; gap: 24px 40px; padding: 18px var(--gutter) 28px; align-items: start; max-width: 1400px; margin-inline: auto; }
+.head { grid-area: head; padding-top: 10px; }
+.text { grid-area: rest; display: grid; gap: 22px; align-content: start; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.fact b { display: block; font-family: var(--display); font-weight: 700; font-stretch: 115%; font-size: 1.7rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 0.74rem; color: var(--muted); }
+.key { display: grid; gap: 10px; font-size: 0.8rem; }
+.key .row { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; }
+.key svg { display: block; }
+.ramp { height: 8px; border-radius: 2px; background: linear-gradient(90deg, #A8702E, #D89A3E, #F1C766, #FFE7A1); }
+.ramp-scale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.62rem; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.figure { grid-area: fig; min-width: 0; position: relative; }
+.figure svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 80px); }
+.figure svg text { font-family: var(--mono); fill: var(--muted); }
+.m { cursor: pointer; transition: opacity 0.2s; }
+.dimmed .m:not(.hot) { opacity: 0.35; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: 1fr; grid-template-areas: "head" "fig" "rest"; }
+  .figure { overflow-x: auto; }
+  .figure svg { max-height: none; min-width: 760px; }
+}
+</style>
+<script src="viz-only.js" defer></script>
+</head>
+<body>
+<nav class="series" aria-label="Isometric Bengaluru">
+  <a class="home" href="index.html">ಬೆಂಗಳೂರು <span>Isometric</span></a>
+  <a href="landcover.html">Concrete Tide</a>
+  <a href="metro.html">Namma Metro</a>
+  <a href="monsoon.html" aria-current="page">Monsoon Almanac</a>
+  <a href="people.html">Lakhs of People</a>
+  <a href="delhi-metro.html">Delhi Metro</a>
+</nav>
+<main class="wrap">
+  <header class="head">
+      <p class="eyebrow"><span class="kn">ಮಳೆ</span>Climate normals · 1991–2020</p>
+      <h1 class="title">Monsoon Almanac</h1>
+      <p class="dek">Bengaluru takes rain from both monsoons. The wettest month is <b>September</b>, and the northeast monsoon keeps <b>October</b> nearly as wet. <b>April</b> is the hottest month and <b>May</b> out-rains June.</p>
+  </header>
+  <section class="text">
+    <div class="facts">
+      <div class="fact"><b id="fTotal">1,078 mm</b><span>rain in an average year</span></div>
+      <div class="fact"><b id="fDays">63</b><span>rainy days (2.5 mm or more)</span></div>
+      <div class="fact"><b>34.1°</b><span>April mean daily high</span></div>
+      <div class="fact"><b>16.1°</b><span>January mean daily low</span></div>
+    </div>
+    <div class="key">
+      <div class="row"><svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><polygon points="4,8 17,1 30,8 17,15" fill="var(--rain-top)"/><polygon points="4,8 17,15 17,29 4,22" fill="var(--rain)"/><polygon points="17,15 30,8 30,22 17,29" fill="var(--rain-side)"/></svg><span><b>Rain gauges</b>: average monthly rainfall, in mm. Height is to scale against the ruler.</span></div>
+      <div class="row"><svg width="34" height="18" viewBox="0 0 34 18" aria-hidden="true"><polygon points="2,9 10,5 18,9 10,13" fill="var(--ink)" opacity="0.85"/><polygon points="14,11 22,7 30,11 22,15" fill="var(--ink)" opacity="0.85"/></svg><span><b>Floor tiles</b>: one tile per rainy day, counted in the average month.</span></div>
+      <div class="row"><svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><polygon points="8,4 26,13 26,26 8,17" fill="#F1C766"/></svg><span><b>Front-face bars</b>: each spans the mean daily low to the mean daily high. Colour shows the high.</span></div>
+      <div><div class="ramp"></div><div class="ramp-scale"><span>26.9°</span><span>mean daily high</span><span>34.1°</span></div></div>
+    </div>
+    <div class="actions"><button class="btn" id="dataBtn">Data table</button></div>
+    <p class="source">Source: India Meteorological Department climate normals for Bengaluru, 1991–2020, as tabulated on <a href="https://en.wikipedia.org/wiki/Bangalore#Climate" target="_blank" rel="noopener">Wikipedia</a>. A rainy day is one with 2.5 mm of rain or more.</p>
+  </section>
+  <section class="figure">
+    <svg id="iso" role="img" aria-label="Isometric chart of Bengaluru monthly rainfall, rainy days and temperature range"></svg>
+  </section>
+  <div class="sheet" id="sheet" hidden>
+    <button class="btn close" id="closeSheet">Close</button>
+    <h2>Bengaluru climate normals, 1991–2020</h2>
+    <div class="table-wrap"><table id="tbl"></table></div>
+  </div>
+</main>
+<div class="tip" id="tip" role="status"></div>
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+// IMD 1991–2020: mean daily max °C, mean daily min °C, rainfall mm, rainy days
+const D = [
+  [28.4, 16.1, 1.6, 0.2], [30.9, 17.6, 7.1, 0.3], [33.4, 20.2, 14.7, 1.1], [34.1, 22.1, 61.7, 4.0],
+  [33.1, 21.8, 128.7, 7.5], [29.7, 20.6, 110.3, 6.8], [28.3, 20.1, 116.4, 8.0], [28.1, 20.0, 162.7, 10.2],
+  [28.6, 20.0, 208.3, 9.5], [28.5, 19.8, 186.4, 9.6], [27.4, 18.3, 64.5, 4.2], [26.9, 16.4, 15.4, 1.3],
+].map((r, i) => ({ i, m: MONTHS[i], name: FULL[i], hi: r[0], lo: r[1], mm: r[2], days: r[3] }));
+const NOTES = { 3: 'Pre-monsoon thunderstorms, locally called mango showers', 4: 'Mango showers peak; May out-rains June', 8: 'Wettest month', 9: 'The northeast monsoon arrives', 0: 'Driest and coolest nights' };
+const SEASONS = [ [0, 1, 'Winter'], [2, 4, 'Pre-monsoon'], [5, 8, 'Southwest monsoon'], [9, 11, 'Northeast monsoon'] ];
+const total = D.reduce((a, d) => a + d.mm, 0), days = D.reduce((a, d) => a + d.days, 0);
+document.getElementById('fTotal').textContent = Math.round(total).toLocaleString('en-IN') + ' mm';
+document.getElementById('fDays').textContent = Math.round(days);
+
+/* ---------- isometric projection ---------- */
+const U = 30, C = Math.cos(Math.PI / 6), S = 0.5;
+const P = (x, y, z) => [(x - y) * C * U, ((x + y) * S - z) * U];
+const pt = (p) => { const [a, b] = P(...p); return a.toFixed(1) + ',' + b.toFixed(1); };
+const poly = (pts, fill, extra = '') => `<polygon points="${pts.map(pt).join(' ')}" fill="${fill}" ${extra}/>`;
+const line = (a, b, stroke, w = 1, extra = '') => { const [x1, y1] = P(...a), [x2, y2] = P(...b); return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${stroke}" stroke-width="${w}" ${extra}/>`; };
+// visible faces from this camera: top (+z), left (+y), right (+x)
+function box(x0, y0, z0, dx, dy, dz, top, left, right, extra = '') {
+  const x1 = x0 + dx, y1 = y0 + dy, z1 = z0 + dz;
+  return poly([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], left, extra) +
+         poly([[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]], right, extra) +
+         poly([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], top, extra);
+}
+// text lying in a vertical x–z plane, or flat on the floor
+const wallText = (x, y, z, str, size, fill, anchor = 'start', weight = 400) => { const [a, b] = P(x, y, z); return `<text transform="matrix(${C},${S},0,1,${a.toFixed(1)},${b.toFixed(1)})" font-size="${size}" fill="${fill}" text-anchor="${anchor}" font-weight="${weight}">${str}</text>`; };
+const floorText = (x, y, z, str, size, fill, anchor = 'start') => { const [a, b] = P(x, y, z); return `<text transform="matrix(${C},${S},${-C},${S},${a.toFixed(1)},${b.toFixed(1)})" font-size="${size}" fill="${fill}" text-anchor="${anchor}">${str}</text>`; };
+
+/* ---------- scales ---------- */
+const SP = 1.5, W = 1.0;                 // month spacing, column width
+const colX = (i) => i * SP;
+const RAIN_H = 7 / 210;                   // units per mm
+const COL_Y = [0.4, 1.4], TILE_Y0 = 1.85, TILE = 0.34;
+const X0 = -2.4, X1 = colX(11) + W + 0.8, BACK_Y = -0.3, FRONT_Y = TILE_Y0 + 10.4 * TILE + 1.3;
+const PL_BOT = -6.4;                      // plinth bottom; its front face carries the temperature chart
+const T0 = 14, T1 = 36, TZ0 = -5.5, TZ1 = -1.45;
+const zT = (t) => TZ0 + (t - T0) / (T1 - T0) * (TZ1 - TZ0);
+// temperature ramp by mean daily high (dark → bright gold as it gets hotter)
+const RAMP = ['#A8702E', '#D89A3E', '#F1C766', '#FFE7A1'];
+function ramp(t) {
+  const u = Math.max(0, Math.min(1, (t - 26.9) / (34.1 - 26.9))) * (RAMP.length - 1), k = Math.min(RAMP.length - 2, Math.floor(u)), f = u - k;
+  const a = RAMP[k].match(/\w\w/g).map(h => parseInt(h, 16)), b = RAMP[k + 1].match(/\w\w/g).map(h => parseInt(h, 16));
+  return '#' + a.map((v, j) => Math.round(v + (b[j] - v) * f).toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------- drawing ---------- */
+const svg = document.getElementById('iso');
+{ // viewBox from the projected extremes
+  const corners = [[X0, BACK_Y, 210 * RAIN_H + 1], [X1, BACK_Y, 210 * RAIN_H + 1], [X0, FRONT_Y, PL_BOT], [X1, FRONT_Y, PL_BOT], [X0, FRONT_Y, 0], [X1, BACK_Y, 0], [X1, BACK_Y, PL_BOT]].map(p => P(...p));
+  const xs = corners.map(c => c[0]), ys = corners.map(c => c[1]);
+  const pad = 24; svg.setAttribute('viewBox', `${(Math.min(...xs) - pad).toFixed(0)} ${(Math.min(...ys) - pad).toFixed(0)} ${(Math.max(...xs) - Math.min(...xs) + pad * 2).toFixed(0)} ${(Math.max(...ys) - Math.min(...ys) + pad * 2).toFixed(0)}`);
+}
+const ink = 'var(--ink)', muted = 'var(--muted)', gold = 'var(--accent)';
+const F = FRONT_Y;
+function draw(k) { // k: 0→1 growth factor for the load animation
+  let s = '';
+  // plinth: a silk-bordered block; the front face is the temperature panel
+  s += box(X0, BACK_Y, PL_BOT, X1 - X0, FRONT_Y - BACK_Y, -PL_BOT, '#11535A', '#0C3C41', '#072629');
+  s += poly([[X0, F, -0.34], [X1, F, -0.34], [X1, F, -0.2], [X0, F, -0.2]], gold);
+  s += poly([[X0, F, PL_BOT + 0.22], [X1, F, PL_BOT + 0.22], [X1, F, PL_BOT + 0.32], [X0, F, PL_BOT + 0.32]], gold);
+  for (let x = X0 + 0.45; x < X1 - 0.2; x += 0.7) s += poly([[x, F, PL_BOT + 0.56], [x + 0.13, F, PL_BOT + 0.68], [x, F, PL_BOT + 0.8], [x - 0.13, F, PL_BOT + 0.68]], gold, 'opacity="0.55"');
+  // temperature grid on the front face
+  for (let t = 15; t <= 35; t += 5) {
+    s += line([X0 + 1.9, F, zT(t)], [X1 - 0.2, F, zT(t)], '#1E5A60', 1);
+    s += wallText(X0 + 1.7, F, zT(t) - 0.1, t + '°C', 10, muted, 'end');
+  }
+  // rain ruler in the gauges' own plane, so heights read true
+  const ry = (COL_Y[0] + COL_Y[1]) / 2, rx = -1.1;
+  s += line([rx, ry, 0], [rx, ry, 200 * RAIN_H], muted, 1.2);
+  for (let mm = 0; mm <= 200; mm += 50) { s += line([rx - 0.18, ry, mm * RAIN_H], [rx, ry, mm * RAIN_H], muted, 1.2); s += wallText(rx - 0.3, ry, mm * RAIN_H - 0.1, mm + (mm === 200 ? ' mm' : ''), 10, muted, 'end'); }
+  // seasons, lying on the floor along the front edge
+  SEASONS.forEach(([a, b, label]) => {
+    const xa = colX(a) + 0.05, xb = colX(b) + W - 0.05, yy = F - 0.75;
+    s += line([xa, yy, 0], [xb, yy, 0], muted, 1) + line([xa, yy - 0.2, 0], [xa, yy, 0], muted, 1) + line([xb, yy - 0.2, 0], [xb, yy, 0], muted, 1);
+    s += floorText(xa, yy + 0.5, 0, label.toUpperCase(), 9, muted);
+  });
+  // months, back to front
+  D.forEach(d => {
+    const x = colX(d.i), kk = Math.max(0, Math.min(1, k * 1.6 - d.i * 0.05));
+    const e = 1 - Math.pow(1 - kk, 3);
+    let g = '';
+    // hit areas first so the marks paint over them
+    g += poly([[x - 0.25, COL_Y[0], 0], [x + W + 0.25, COL_Y[0], 0], [x + W + 0.25, F, 0], [x - 0.25, F, 0]], 'transparent');
+    g += poly([[x - 0.25, F, 0], [x + W + 0.25, F, 0], [x + W + 0.25, F, PL_BOT], [x - 0.25, F, PL_BOT]], 'transparent');
+    // rain gauge column
+    const h = Math.max(0.04, d.mm * RAIN_H * e);
+    g += box(x, COL_Y[0], 0, W, COL_Y[1] - COL_Y[0], h, 'var(--rain-top)', 'var(--rain)', 'var(--rain-side)');
+    // rainy-day tiles
+    const n = d.days * e;
+    for (let t = 0; t < Math.ceil(n - 1e-9); t++) {
+      const f = Math.min(1, n - t), y0 = TILE_Y0 + t * TILE;
+      g += box(x + 0.1, y0 + 0.03, 0, (W - 0.2) * f, TILE - 0.06, 0.12, '#F6EEDC', '#C9BFA8', '#A89F8A');
+    }
+    // temperature range bar on the front face
+    const c = ramp(d.hi), zl = zT(d.lo), zh = zl + (zT(d.hi) - zl) * e;
+    g += poly([[x, F, zl], [x + W, F, zl], [x + W, F, zh], [x, F, zh]], c);
+    // month label on the face, just under the zari band
+    g += wallText(x + W / 2, F, -0.85, d.m.toUpperCase(), 11, ink, 'middle', 500);
+    s += `<g class="m" data-i="${d.i}">${g}</g>`;
+  });
+  // selective direct labels: the extremes only
+  const lab = (d, z, str) => wallText(colX(d.i) + W / 2, COL_Y[0], z, str, 11, ink, 'middle', 600);
+  s += lab(D[8], D[8].mm * RAIN_H * k + 0.3, '208 mm');
+  s += lab(D[9], D[9].mm * RAIN_H * k + 0.3, '186');
+  s += lab(D[0], 0.35, '1.6');
+  s += wallText(colX(3) + W / 2, F, zT(D[3].hi) * 1 + 0.18, '34.1°', 10.5, ink, 'middle', 600);
+  s += wallText(colX(0) + W / 2, F, zT(D[0].lo) - 0.5, '16.1°', 10.5, ink, 'middle', 600);
+  s += lab(D[4], D[4].mm * RAIN_H * k + 0.3, '129');
+  s += lab(D[5], D[5].mm * RAIN_H * k + 0.3, '110');
+  svg.innerHTML = s;
+}
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduce) draw(1);
+else { draw(0.02); const t0 = performance.now(); const step = (t) => { const k = Math.min(1, (t - t0) / 1400); draw(k); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+
+// on narrow screens the figure scrolls sideways; start it on the monsoon months
+{ const fig = document.querySelector('.figure'); if (fig.scrollWidth > fig.clientWidth + 4) fig.scrollLeft = (fig.scrollWidth - fig.clientWidth) * 0.55; }
+
+/* ---------- hover ---------- */
+const tip = document.getElementById('tip');
+function showTip(html, x, y) { tip.innerHTML = html; const w = tip.offsetWidth, h = tip.offsetHeight; tip.style.transform = `translate(${Math.min(innerWidth - w - 8, x + 16)}px, ${Math.max(8, Math.min(innerHeight - h - 8, y - h - 12))}px)`; }
+function hideTip() { tip.style.transform = 'translate(-9999px,-9999px)'; svg.classList.remove('dimmed'); svg.querySelectorAll('.hot').forEach(n => n.classList.remove('hot')); }
+svg.addEventListener('pointermove', (e) => {
+  const g = e.target.closest('.m'); if (!g) return hideTip();
+  const d = D[+g.dataset.i];
+  svg.classList.add('dimmed'); svg.querySelectorAll('.hot').forEach(n => n !== g && n.classList.remove('hot')); g.classList.add('hot');
+  showTip(`<div class="t-head">${d.name}</div>
+    <div class="t-row"><span><i class="sw" style="background:var(--rain)"></i>Rainfall</span><span>${d.mm.toFixed(1)} mm</span></div>
+    <div class="t-row"><span><i class="sw" style="background:var(--ink)"></i>Rainy days</span><span>${d.days.toFixed(1)}</span></div>
+    <div class="t-row"><span><i class="sw" style="background:${ramp(d.hi)}"></i>Mean high</span><span>${d.hi.toFixed(1)} °C</span></div>
+    <div class="t-row"><span><i class="sw" style="background:transparent;border:1px solid var(--muted)"></i>Mean low</span><span>${d.lo.toFixed(1)} °C</span></div>
+    <div class="t-note">${(d.mm / total * 100).toFixed(1)}% of the year's rain${NOTES[d.i] ? '. ' + NOTES[d.i] : ''}</div>`, e.clientX, e.clientY);
+});
+svg.addEventListener('pointerleave', hideTip);
+
+/* ---------- table ---------- */
+document.getElementById('tbl').innerHTML = '<thead><tr><th>Month</th><th>Rain (mm)</th><th>Rainy days</th><th>Mean high (°C)</th><th>Mean low (°C)</th></tr></thead><tbody>' +
+  D.map(d => `<tr><td>${d.name}</td><td>${d.mm.toFixed(1)}</td><td>${d.days.toFixed(1)}</td><td>${d.hi.toFixed(1)}</td><td>${d.lo.toFixed(1)}</td></tr>`).join('') +
+  `<tr><td><b>Year</b></td><td><b>${total.toFixed(1)}</b></td><td><b>${days.toFixed(1)}</b></td><td></td><td></td></tr></tbody>`;
+document.getElementById('dataBtn').onclick = () => { document.getElementById('sheet').hidden = false; };
+document.getElementById('closeSheet').onclick = () => { document.getElementById('sheet').hidden = true; };
+</script>
+</body>
+</html>
