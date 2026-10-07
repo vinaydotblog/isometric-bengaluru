@@ -90,6 +90,7 @@ export async function mountMetro(cfg) {
   const app = $('#app');
   app.innerHTML = `
     <div class="stage" id="stage"></div>
+    <p class="touch-hint">Swipe up or down to scroll · drag sideways to turn the map · pinch to zoom</p>
     <header class="intro">
       <p class="eyebrow"><span class="kn${cfg.nativeClass ? ' ' + cfg.nativeClass : ''}" lang="${cfg.nativeLang || ''}">${cfg.native}</span>${cfg.eyebrow}</p>
       <h1 class="title">${cfg.title}</h1>
@@ -169,6 +170,12 @@ export async function mountMetro(cfg) {
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -2000, 2000);
   const CENTER = new THREE.Vector3(); { const w = toWorld(cfg.center?.lat ?? lat0, cfg.center?.lon ?? lon0); CENTER.set(w.x, 0, w.z); }
   const controls = new OrbitControls(camera, renderer.domElement);
+  // On narrow screens the map fills most of the view, so give the page its scroll back:
+  // vertical swipes and the plain wheel scroll; sideways drags turn the map; pinch or Ctrl/⌘+wheel zooms.
+  const narrowMQ = matchMedia('(max-width: 760px)');
+  const applyTouch = () => { renderer.domElement.style.touchAction = narrowMQ.matches ? 'pan-y' : 'none'; };
+  applyTouch(); narrowMQ.addEventListener('change', applyTouch);
+  stage.addEventListener('wheel', (e) => { if (narrowMQ.matches && !e.ctrlKey && !e.metaKey) e.stopPropagation(); }, { capture: true });
   Object.assign(controls, { enableDamping: true, enablePan: true, screenSpacePanning: true, minZoom: 0.6, maxZoom: 8, rotateSpeed: 0.55, autoRotateSpeed: 0.5 });
   function resetCamera() {
     controls.target.copy(CENTER);
