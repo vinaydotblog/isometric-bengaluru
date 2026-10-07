@@ -28,11 +28,14 @@ export async function mountMetro(cfg) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const KEY = 'layered-metro:' + cfg.key;
   const defaults = { ...DEFAULTS, ...(cfg.defaults || {}) };
+  // labels crowd a phone-sized map, so they start off there unless the viewer has picked a label setting
+  const phone = matchMedia('(max-width: 760px)').matches;
+  if (phone) defaults.labels = 'off';
   const state = { ...defaults, hidden: [] };
   // film mode: a page drives every frame itself (camera, year, focus), so saved settings are ignored
   const FILM = cfg.film || null;
   if (FILM) Object.assign(state, { labels: 'off', tooltips: false, planned: true, trains: true, autoRotate: false }, FILM.state || {});
-  else try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* storage unavailable */ }
+  else try { const saved = JSON.parse(localStorage.getItem(KEY) || '{}'); if (phone && !saved.labelsChosen) delete saved.labels; Object.assign(state, saved); } catch { /* storage unavailable */ }
   if (!THEMES[state.theme]) state.theme = 'night';
   const save = () => { if (FILM) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore */ } };
 
@@ -509,7 +512,7 @@ export async function mountMetro(cfg) {
   const applyTips = () => { $('#tipBtn').setAttribute('aria-pressed', String(state.tooltips)); if (!state.tooltips) { hideTip(); focusGroups(null); } };
   const setters = [
     sw('#c-tooltips', 'tooltips', applyTips),
-    seg('#c-labels', 'labels', updateTagVisibility),
+    seg('#c-labels', 'labels', () => { state.labelsChosen = true; save(); updateTagVisibility(); }),
     sw('#c-planned', 'planned', () => { rebuild(); renderLedger(); }),
     sw('#c-trains', 'trains', () => { uTrains.value = state.trains ? 1 : 0; }),
     slider('#c-speed', '#o-speed', 'speed', v => v.toFixed(2) + '×', () => {}),
@@ -529,7 +532,7 @@ export async function mountMetro(cfg) {
   $('#tipBtn').onclick = () => { state.tooltips = !state.tooltips; save(); setters[0](); applyTips(); };
   $('#resetView').onclick = () => { state.tilt = defaults.tilt; setters[setters.length - 1](); resetCamera(); save(); };
   $('#resetAll').onclick = () => {
-    Object.assign(state, { ...defaults, hidden: [] }); save(); setters.forEach(f => f());
+    Object.assign(state, { ...defaults, hidden: [], labelsChosen: false }); save(); setters.forEach(f => f());
     uTrains.value = state.trains ? 1 : 0; uGround.value = state.ground; controls.autoRotate = state.autoRotate;
     applyTips(); applyTheme(); rebuild(); renderLedger(); resetCamera();
   };
@@ -538,7 +541,7 @@ export async function mountMetro(cfg) {
   addEventListener('keydown', (e) => {
     if (e.target.closest('input, textarea, select') || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 't' || e.key === 'T') { state.tooltips = !state.tooltips; save(); setters[0](); applyTips(); }
-    else if (e.key === 'l' || e.key === 'L') { const order = ['off', 'key', 'all']; state.labels = order[(order.indexOf(state.labels) + 1) % 3]; save(); setters[1](); updateTagVisibility(); }
+    else if (e.key === 'l' || e.key === 'L') { const order = ['off', 'key', 'all']; state.labels = order[(order.indexOf(state.labels) + 1) % 3]; state.labelsChosen = true; save(); setters[1](); updateTagVisibility(); }
     else if (e.key === 'Escape') { openPanel(false); $('#sheet').hidden = true; }
   });
 
